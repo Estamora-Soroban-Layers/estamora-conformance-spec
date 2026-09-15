@@ -83,10 +83,33 @@ describe("top-level layout", () => {
     "README.md",
     "CHANGELOG.md",
     "VERSIONING.md",
+    "CONTRIBUTING.md",
+    "GOVERNANCE.md",
+    "SECURITY.md",
     "package.json",
     "tsconfig.json",
   ])("publishes %s", (name) => {
     expect(files(REPO_ROOT), name).toContain(name);
+  });
+
+  it("publishes the continuous integration configuration", () => {
+    const github = join(REPO_ROOT, ".github");
+    expect(subdirectories(github).sort()).toEqual(["ISSUE_TEMPLATE", "workflows"]);
+    expect(files(join(github, "workflows")).sort()).toEqual([
+      "ci.yml",
+      "docs.yml",
+      "profile-validation.yml",
+      "release.yml",
+      "schema-validation.yml",
+    ]);
+    expect(files(join(github, "ISSUE_TEMPLATE")).sort()).toEqual([
+      "bug-report.yml",
+      "config.yml",
+      "improvement.yml",
+      "profile-proposal.yml",
+    ]);
+    expect(files(github)).toContain("PULL_REQUEST_TEMPLATE.md");
+    expect(files(github)).toContain("dependabot.yml");
   });
 
   it("keeps the test suite inside the tree the tsconfig typechecks", () => {
