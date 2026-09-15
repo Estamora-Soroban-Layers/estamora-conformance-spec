@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: burn-reduces-holder-balance
+profile: sep-41
+profile_version: "1.0"
+title: A burn reduces the holder's balance and never raises the balance total
+description: >-
+  Alice holds 1000 and burns 400. Her balance must fall to 600 and exactly one
+  burn event must report the amount. The aggregate assertion is the reason this
+  vector is recorded against the invariant dimension: a burn that credits another
+  account, or that mints the difference somewhere, would satisfy the individual
+  balance assertion while contradicting the reason a burn exists.
+kind: invariant
+method: burn
+tags: [burn, invariant, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance is reduced by the burn.
+  balances:
+    alice: "1000"
+  allowances: []
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  amount:
+    kind: literal
+    value: "400"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: holder-balance-reduced
+      description: The holder's balance must fall by exactly the burned amount.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "600"
+    - id: total-not-raised
+      description: Burning must never increase the sum of all balances.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: less_or_equal
+        left:
+          kind: sum
+          over: balances
+        right:
+          kind: literal
+          value: "1000"
+  events:
+    required:
+      - event: burn
+        topics:
+          - kind: literal
+            value: burn
+          - kind: actor
+            ref: alice
+        data:
+          - kind: literal
+            value: "400"
+    forbidden: [transfer, approve, mint, clawback]
+  invariants: [burn-does-not-increase-balances, balances-non-negative]
+
+assertions: []
+
+rationale: >-
+  Burning removes value from circulation, so the aggregate must fall or stay
+  level. A burn that increases any balance is creating value while claiming to
+  destroy it, and the individual balance assertion would not notice. The mint and
+  clawback events are forbidden because a burn that also reports a mint is
+  describing two opposite movements for one action.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
