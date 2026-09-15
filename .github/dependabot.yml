@@ -1,0 +1,51 @@
+version: 2
+
+updates:
+  # The tooling depends on three runtime packages and four development packages,
+  # all pinned to exact versions. This repository publishes a specification, so a
+  # dependency bump is never routine: it can change how a document is validated,
+  # which changes what a profile means. Dependabot opens the pull request so that
+  # the change is reviewed rather than silently absorbed.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    commit-message:
+      prefix: "chore(deps)"
+      include: scope
+    labels:
+      - dependencies
+    groups:
+      # A JSON Schema validator, its format plugin and the type definitions that
+      # describe them move together; splitting them across pull requests produces
+      # changes that cannot be evaluated on their own.
+      schema-tooling:
+        patterns:
+          - ajv
+          - ajv-formats
+      test-tooling:
+        patterns:
+          - vitest
+          - tsx
+          - typescript
+          - "@types/*"
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: UTC
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "chore(ci)"
+      include: scope
+    labels:
+      - dependencies
+      - github-actions
