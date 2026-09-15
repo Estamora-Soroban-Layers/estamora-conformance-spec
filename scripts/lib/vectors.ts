@@ -178,6 +178,16 @@ function safeReadDir(directory: string): readonly string[] {
   }
 }
 
+/**
+ * Read a directory's entries, returning an empty list when it is missing.
+ *
+ * Exposed so that validators can walk the shared vector library without each of
+ * them re-implementing the same missing-directory handling.
+ */
+export function readdirSyncSafe(directory: string): readonly string[] {
+  return safeReadDir(directory);
+}
+
 function isDirectory(path: string): boolean {
   try {
     return statSync(path).isDirectory();
