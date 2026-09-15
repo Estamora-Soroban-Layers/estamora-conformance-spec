@@ -36,6 +36,7 @@ import {
   discoverSharedVectorSets,
   ErrorCode,
   EXIT_CODES,
+  EXAMPLE_PROFILES_DIR,
   getSchemaRegistry,
   handleCliError,
   isJsonObject,
@@ -357,6 +358,13 @@ function checkProfileCoverage(
 ): void {
   for (const bundle of bundles) {
     if (!bundle.valid || bundle.identity === undefined) {
+      continue;
+    }
+    if (bundle.directory.startsWith(EXAMPLE_PROFILES_DIR)) {
+      // A worked example is an illustration, not a released requirement set, and
+      // its suite is deliberately smaller than the dimension matrix. Reporting
+      // the gaps as warnings would train a reader to ignore the same warnings when
+      // they appear for a profile that is actually published.
       continue;
     }
     const kinds = new Set<string>();
