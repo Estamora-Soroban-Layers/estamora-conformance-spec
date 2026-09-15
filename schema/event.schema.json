@@ -110,6 +110,17 @@
               }
             }
           }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unconstrained"
+            }
+          },
+          "description": "The field's value is not constrained by the profile; only its presence and shape are checked. Needed because some event fields legitimately depend on data the profile cannot name, such as the multiplexing id carried by a destination address, and forcing a binding would mean inventing an assertion the upstream specification does not make."
         }
       ],
       "discriminator": {
@@ -224,7 +235,7 @@
             },
             "fields": {
               "type": "array",
-              "description": "Named payload entries for the map form. May be empty for the scalar and vec forms, where position carries the meaning.",
+              "description": "Named payload entries. For the map form these are matched by name. For the vec form the same entries are matched positionally in declaration order, which is the only reading that lets one field list describe both encodings that SEP-41 permits. May be empty for the scalar form.",
               "items": {
                 "$ref": "#/$defs/eventDataField"
               }
@@ -248,29 +259,7 @@
               "maximum": 1024
             }
           },
-          "allOf": [
-            {
-              "if": {
-                "properties": {
-                  "min": {
-                    "const": 0
-                  },
-                  "max": {
-                    "type": "integer"
-                  }
-                },
-                "required": ["min", "max"]
-              },
-              "then": {
-                "type": "object",
-                "properties": {
-                  "max": {
-                    "const": 0
-                  }
-                }
-              }
-            }
-          ]
+          "$comment": "JSON Schema cannot express `min <= max` for two sibling integer keywords, so the ordering constraint is enforced by the cross-reference validator in validate-profiles.ts, which can report both offending values at once."
         },
         "ordering": {
           "type": "array",
