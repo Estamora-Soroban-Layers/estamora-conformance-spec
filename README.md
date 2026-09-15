@@ -334,6 +334,34 @@ outcome:
 `2` never means "a contract is non-conformant". CI and the runner depend on that
 distinction, which is why it is a tested contract rather than a convention.
 
+## Documentation
+
+The reference set lives in [`docs/`](docs/). Each document defines one part of the model
+normatively; where a document and a schema disagree, the schema governs and the document is
+a defect.
+
+Start here, then read the model that constrains the profile you are writing.
+
+| Document                                                     | Defines                                                           |
+| ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| [`docs/introduction.md`](docs/introduction.md)               | What Estamora is, and why interface compatibility is insufficient |
+| [`docs/architecture.md`](docs/architecture.md)               | The layers, and the boundary with the runner                      |
+| [`docs/terminology.md`](docs/terminology.md)                 | The vocabulary used normatively throughout                        |
+| [`docs/profile-authoring.md`](docs/profile-authoring.md)     | How to author a profile bundle                                    |
+| [`docs/behavioral-model.md`](docs/behavioral-model.md)       | Rules, preconditions, postconditions                              |
+| [`docs/authorization-model.md`](docs/authorization-model.md) | Who must authorize, and what coverage means                       |
+| [`docs/event-model.md`](docs/event-model.md)                 | Topics, data, bindings, cardinality, ordering                     |
+| [`docs/state-model.md`](docs/state-model.md)                 | State assertions, predicates and value expressions                |
+| [`docs/invariant-model.md`](docs/invariant-model.md)         | Invariant kinds, scopes and severities                            |
+| [`docs/failure-model.md`](docs/failure-model.md)             | Failure categories, outcomes and error-code policy                |
+| [`docs/vector-model.md`](docs/vector-model.md)               | The structure and placement of test vectors                       |
+| [`docs/versioning.md`](docs/versioning.md)                   | How profile versions are assigned and changed                     |
+| [`docs/compatibility.md`](docs/compatibility.md)             | What compatibility between profile revisions means                |
+| [`docs/certification.md`](docs/certification.md)             | What a conformance claim refers to                                |
+| [`docs/security.md`](docs/security.md)                       | The bounds of a conformance result                                |
+| [`docs/governance.md`](docs/governance.md)                   | How requirements are proposed, reviewed and retired               |
+| [`docs/faq.md`](docs/faq.md)                                 | Answers to the questions this design invites                      |
+
 ## Authoring a profile
 
 1. Read [`docs/profile-authoring.md`](docs/profile-authoring.md) and
