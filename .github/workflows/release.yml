@@ -72,12 +72,52 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The release carries an installable artefact rather than only a note.
+      #
+      # The previous release published no files at all, so the only way to obtain this
+      # specification at a pinned revision was to clone the repository. `npm pack` produces
+      # the tarball that would be published to the registry, and attaching it to the release
+      # makes `npm install <url>` a working install path without a registry account and
+      # without waiting for the package to be published -- the tarball is built from the
+      # tagged tree by the same job that just validated that tree.
+      - name: Pack the specification
+        id: pack
+        shell: bash
+        run: |
+          set -euo pipefail
+          name="$(npm pack --silent)"
+          echo "tarball=$name" >> "$GITHUB_OUTPUT"
+          # A checksum beside the artefact, so a consumer who fetches it can verify it
+          # without fetching it twice. The same discipline the runner's binary installer
+          # applies to its own download.
+          shasum -a 256 -b "$name" > SHA256SUMS
+          cat SHA256SUMS
+
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.verify.outputs.version }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
         run: |
           set -euo pipefail
           gh release create "v${VERSION}" \
             --title "v${VERSION}" \
-            --notes "See CHANGELOG.md for the requirements, profiles and vectors in this release."
+            --notes "See CHANGELOG.md for the requirements, profiles and vectors in this release.
+
+          Install the packaged specification at this revision:
+
+          \`\`\`sh
+          npm install https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/releases/download/v${VERSION}/${TARBALL}
+          \`\`\`
+
+          The schemas are also served at \`https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/\`, which is what their canonical \`\$id\` names." \
+            "$TARBALL" SHA256SUMS
