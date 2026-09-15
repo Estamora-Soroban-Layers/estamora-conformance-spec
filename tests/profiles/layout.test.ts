@@ -8,7 +8,7 @@
  * is the only way a structural change gets noticed before release.
  */
 
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -83,11 +83,19 @@ const REFERENCE_DOCS = [
   "versioning.md",
 ] as const;
 
-/** Every relative Markdown link in a document, as written. */
+/**
+ * Every relative Markdown link in a document, as written.
+ *
+ * Absolute targets are excluded, and that is the whole job of this function: a
+ * document is allowed to cite an upstream specification by URL, and a link to a
+ * remote `.md` is not a path this repository is expected to resolve. Filtering on
+ * the `.md` suffix alone made the check fail for exactly the documents that cite
+ * their source most carefully.
+ */
 function markdownLinks(markdown: string): string[] {
   return [...markdown.matchAll(/\]\(([^)\s]+)\)/g)]
     .map((match) => match[1] ?? "")
-    .filter((target) => target.endsWith(".md"));
+    .filter((target) => target.endsWith(".md") && !target.includes("://"));
 }
 
 /** The five validation entry points CI invokes. */
@@ -180,9 +188,12 @@ describe("profile layout", () => {
       for (const version of subdirectories(join(PROFILES_DIR, id))) {
         expect(version, `profiles/${id}/${version}`).toMatch(/^\d+\.\d+$/u);
       }
-      for (const file of files(join(PROFILES_DIR, id))) {
-        expect(file, `profiles/${id}/${file}`).toBe("README.md");
-      }
+      // Asserted rather than merely permitted. The loop this replaced iterated an
+      // empty list when no README existed, so a profile id could ship without one
+      // and the test still passed: a check that read as a requirement and was not
+      // one. The README is the only file a profile id may hold beside its version
+      // directories, so the set is pinned exactly.
+      expect(files(join(PROFILES_DIR, id)), `profiles/${id}`).toEqual(["README.md"]);
     }
   });
 
@@ -196,6 +207,28 @@ describe("profile layout", () => {
       const expected = [...Object.values(PROFILE_BUNDLE_FILES)].sort();
       expect(files(directory).sort(), directory).toEqual(expected);
       expect(subdirectories(directory).sort(), directory).toEqual(["vectors"]);
+    }
+  });
+
+  it("resolves every relative Markdown link in every profile README", () => {
+    // A profile README is the document a reader arrives at after following the
+    // identity of the requirement set, so a dead link in one is a reader who
+    // cannot reach the versioning policy or the authoring guide from where the
+    // question actually arises.
+    const readmes = [
+      join(PROFILES_DIR, "README.md"),
+      ...subdirectories(PROFILES_DIR)
+        .filter((id) => id !== "examples")
+        .map((id) => join(PROFILES_DIR, id, "README.md")),
+    ];
+    for (const readme of readmes) {
+      const relative = readme.slice(REPO_ROOT.length + 1);
+      expect(existsSync(readme), relative).toBe(true);
+      for (const target of markdownLinks(readFileSync(readme, "utf8"))) {
+        expect(existsSync(join(dirname(readme), target)), `${relative} links to ${target}`).toBe(
+          true,
+        );
+      }
     }
   });
 
