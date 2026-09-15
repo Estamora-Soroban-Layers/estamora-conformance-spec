@@ -1,0 +1,289 @@
+# yaml-language-server: $schema=../../../schema/event.schema.json
+events:
+  - id: transfer
+    name: transfer
+    requirement: required
+    summary: Exactly one transfer event must describe a successful value movement.
+    description: >-
+      Consumers reconstruct balances from this event, so a transfer that settles
+      without emitting it, emits it twice, or states an amount that disagrees with
+      the balance change leaves every downstream indexer wrong even though the
+      contract's own state is correct. The amount is bound to the operation's
+      amount argument rather than to a literal, so the requirement survives a
+      change of fixture.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: transfer
+        semantics: The event discriminator, which SEP-0041 fixes as the symbol transfer.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: from
+        semantics: The account the tokens were drawn from, which must be the debited account.
+      - index: 2
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: to
+        semantics: The account that received the tokens, which must be the credited account.
+    data:
+      format: either
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: input
+            name: amount
+          semantics: The transferred quantity, which must equal the observed balance delta.
+          optional: false
+        - name: to_muxed_id
+          type:
+            kind: option
+            some:
+              kind: prim
+              name: u64
+          binding:
+            kind: unconstrained
+          semantics: The multiplexing id of the destination, absent for a plain address.
+          optional: true
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations: [balances-conserved-by-transfer]
+    notes:
+      - >-
+        transfer_from emits this same event rather than an event of its own,
+        because the observable effect is an ordinary transfer of value.
+
+  - id: approve
+    name: approve
+    requirement: required
+    summary: Exactly one approve event must describe a successful allowance change.
+    description: >-
+      The event records both the new allowance and the ledger at which it
+      expires, which is what lets a wallet tell a user how long a grant will last
+      without reading contract state. Overwriting an allowance must emit the new
+      values, not a delta.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: approve
+        semantics: The event discriminator, which SEP-0041 fixes as the symbol approve.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: from
+        semantics: The account granting the allowance.
+      - index: 2
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: spender
+        semantics: The account receiving the allowance.
+    data:
+      format: either
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: input
+            name: amount
+          semantics: The allowance now in force, replacing rather than adding to any prior value.
+          optional: false
+        - name: live_until_ledger
+          type:
+            kind: prim
+            name: u32
+          binding:
+            kind: input
+            name: live_until_ledger
+          semantics: The ledger at which the allowance expires.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations: [allowances-non-negative]
+
+  - id: burn
+    name: burn
+    requirement: required
+    summary: Exactly one burn event must describe a successful balance destruction.
+    description: >-
+      A burn is a transfer of value to nowhere, so no transfer event accompanies
+      it and the burn event is the only record that supply was reduced.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: burn
+        semantics: The event discriminator, which SEP-0041 fixes as the symbol burn.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: from
+        semantics: The account whose balance was reduced.
+    data:
+      format: either
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: input
+            name: amount
+          semantics: The burned quantity, which must equal the observed balance reduction.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations: [burn-does-not-increase-balances]
+    notes:
+      - >-
+        burn_from emits this same event, because the value movement is a burn
+        regardless of which principal authorized it.
+
+  - id: mint
+    name: mint
+    requirement: optional
+    summary: A mint event must accompany any action that increases the token supply.
+    description: >-
+      SEP-0041 gives implementations freedom over how minting is initiated and
+      does not add a mint function to the interface, so this event is optional.
+      Where a contract does emit it, the event is the only signal consumers have
+      that supply grew, so its absence on an actual mint would be a conformance
+      failure rather than a matter of taste.
+    occurrence: always
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: mint
+        semantics: The event discriminator, which SEP-0041 fixes as the symbol mint.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: unconstrained
+        semantics: The account that received the newly minted tokens.
+    data:
+      format: either
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: unconstrained
+          semantics: The quantity minted, which upstream requires to increase total supply.
+          optional: false
+        - name: to_muxed_id
+          type:
+            kind: option
+            some:
+              kind: prim
+              name: u64
+          binding:
+            kind: unconstrained
+          semantics: The multiplexing id of the recipient, absent for a plain address.
+          optional: true
+    cardinality:
+      min: 0
+      max: 64
+    ordering: []
+    correlations: []
+    notes:
+      - >-
+        No correlation into a supply invariant is declared, because SEP-0041
+        exposes no total-supply accessor and defines no mint function, so neither
+        the quantity to compare nor a method scope for the invariant is
+        observable through this interface. The upstream supply requirement is
+        recorded in the profile compatibility notes instead of being asserted
+        here against state the profile cannot read.
+
+  - id: clawback
+    name: clawback
+    requirement: optional
+    summary: A clawback event must accompany any action that removes tokens from a holder.
+    description: >-
+      A clawback is a burn with an administrative trigger and reduces both the
+      holder's balance and the supply. SEP-0041 states explicitly that no
+      separate burn or transfer event is emitted alongside it, so a contract that
+      emits both a clawback and a burn event is describing one movement twice.
+    occurrence: always
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: clawback
+        semantics: The event discriminator, which SEP-0041 fixes as the symbol clawback.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: unconstrained
+        semantics: The account whose balance was reduced by the clawback.
+    data:
+      format: either
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: unconstrained
+          semantics: The quantity clawed back, which upstream requires to reduce total supply.
+          optional: false
+    cardinality:
+      min: 0
+      max: 64
+    ordering: []
+    correlations: []
+    notes:
+      - >-
+        A clawback must not be accompanied by a burn or transfer event describing
+        the same movement. Vectors covering a contract that exposes clawback
+        should forbid those two event ids alongside requiring this one.
