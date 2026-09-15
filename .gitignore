@@ -6,6 +6,11 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Scratch trees built by the test suite. They must live inside the working
+# tree because profile validation resolves paths relative to the repository
+# root, but they are never committed.
+tests/.tmp*/
+
 # Generated documentation is committed, but its scratch output is not
 .docs-tmp/
 
