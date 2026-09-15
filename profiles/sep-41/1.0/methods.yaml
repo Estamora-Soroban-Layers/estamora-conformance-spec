@@ -1,0 +1,340 @@
+# yaml-language-server: $schema=../../../schema/method.schema.json
+methods:
+  - id: allowance
+    name: allowance
+    requirement: required
+    summary: Returns the amount spender is still allowed to transfer from from.
+    description: >-
+      The returned amount is what the spender may still draw from the holder's
+      balance. A spender that has transferred part of an allowance has the
+      remainder returned here, and an expired allowance must read as zero rather
+      than as the original amount.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account holding the balance of tokens that would be drawn from.
+      - name: spender
+        type:
+          kind: prim
+          name: address
+        semantics: The account permitted to spend tokens held by the from account.
+    returns:
+      type:
+        kind: prim
+        name: i128
+      semantics: The remaining allowance, or zero when there is none or it has expired.
+    mutability: readonly
+    invocation: read_only
+    authorization: [reads-require-no-authorization]
+    events: []
+    failures: []
+    behaviors: [allowance-expired-reads-as-zero]
+    notes:
+      - >-
+        SEP-0041 does not require this call to fail for an unknown pair; the
+        absence of an allowance is represented by zero.
+
+  - id: approve
+    name: approve
+    requirement: required
+    summary: Sets the allowance of spender to amount until live_until_ledger.
+    description: >-
+      Calling this again overwrites the current allowance rather than adding to
+      it, and the new expiry replaces the old one. Because the previous allowance
+      can be spent before the new value is written, a client that intends a
+      replacement value should zero the allowance and confirm nothing was spent
+      in between, but a contract is not required to enforce that sequence.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account holding the balance of tokens that would be drawn from.
+        authorization:
+          required: true
+          semantics: The holder must authorize granting a spending limit over their own balance.
+      - name: spender
+        type:
+          kind: prim
+          name: address
+        semantics: The account being permitted to spend tokens held by the from account.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The total amount the spender may draw. Setting this to zero revokes the allowance.
+      - name: live_until_ledger
+        type:
+          kind: prim
+          name: u32
+        semantics: The ledger number at which the allowance expires and reads as zero.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the effect is observable through allowance.
+    mutability: mutating
+    invocation: invoke
+    authorization: [approve-requires-holder-authorization]
+    events: [approve]
+    failures: [missing-authorization, wrong-actor, invalid-live-until-ledger]
+    behaviors: [approve-overwrites-allowance, approve-without-authorization-fails]
+    notes:
+      - >-
+        An allowance is a spending limit and not a reservation, so an approved
+        amount may legitimately exceed the holder's current balance.
+
+  - id: balance
+    name: balance
+    requirement: required
+    summary: Returns the balance held by an address, or zero if it holds none.
+    description: >-
+      An address with no existing balance entry returns zero rather than failing,
+      so a caller cannot use an error to distinguish an unfunded account from an
+      invalid one.
+    args:
+      - name: id
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose balance is being queried.
+    returns:
+      type:
+        kind: prim
+        name: i128
+      semantics: The current balance, or zero when the address holds no tokens.
+    mutability: readonly
+    invocation: read_only
+    authorization: [reads-require-no-authorization]
+    events: []
+    failures: []
+    behaviors: [balance-read-does-not-mutate-state]
+
+  - id: transfer
+    name: transfer
+    requirement: required
+    summary: Transfers amount from from to to, authorized by from.
+    description: >-
+      Moves value between two accounts. The destination may be a multiplexed
+      address, which is why the event payload may carry a multiplexing id in
+      addition to the amount.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account holding the balance of tokens that is drawn from.
+        authorization:
+          required: true
+          semantics: The holder must authorize the removal of value from their own balance.
+      - name: to
+        type:
+          kind: prim
+          name: muxed_address
+        semantics: The account that receives the tokens, possibly identified by a multiplexing id.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The quantity of tokens to move from the from account to the to account.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the effect is observable through balance and events.
+    mutability: mutating
+    invocation: invoke
+    authorization: [transfer-requires-holder-authorization]
+    events: [transfer]
+    failures: [insufficient-balance, missing-authorization, wrong-actor, invalid-amount]
+    behaviors:
+      - transfer-moves-exact-amount
+      - transfer-insufficient-balance-fails
+      - transfer-without-authorization-fails
+      - transfer-does-not-change-total-balances
+
+  - id: transfer-from
+    name: transfer_from
+    requirement: required
+    summary: Transfers amount from from to to, consuming spender's allowance.
+    description: >-
+      Authorized by the spender rather than by the holder. The allowance is
+      reduced by the amount without changing when it expires, and the call fails
+      if either the allowance or the holder's balance is short.
+    args:
+      - name: spender
+        type:
+          kind: prim
+          name: address
+        semantics: The account authorizing the transfer and whose allowance is consumed.
+        authorization:
+          required: true
+          semantics: The spender must authorize drawing on the allowance they were granted.
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account holding the balance of tokens that is drawn from.
+      - name: to
+        type:
+          kind: prim
+          name: address
+        semantics: The account that receives the transferred tokens.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The quantity of tokens to move and to deduct from the allowance.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; both the balances and the allowance change.
+    mutability: mutating
+    invocation: invoke
+    authorization: [transfer-from-requires-spender-authorization]
+    events: [transfer]
+    failures: [insufficient-allowance, insufficient-balance, missing-authorization, wrong-actor]
+    behaviors:
+      - transfer-from-consumes-exact-amount
+      - transfer-from-beyond-allowance-fails
+      - transfer-from-with-expired-allowance-fails
+    notes:
+      - >-
+        The upstream trait declares the destination as a plain address here,
+        unlike transfer, so a multiplexing id is not part of this signature.
+
+  - id: burn
+    name: burn
+    requirement: required
+    summary: Burns amount from from, reducing the holder's balance.
+    description: >-
+      Removes tokens from circulation without transferring them to another
+      holder. The holder authorizes the burn over their own balance.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose balance is reduced by the burned amount.
+        authorization:
+          required: true
+          semantics: The holder must authorize the destruction of their own tokens.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The quantity of tokens to remove from circulation.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the reduction is observable through balance.
+    mutability: mutating
+    invocation: invoke
+    authorization: [burn-requires-holder-authorization]
+    events: [burn]
+    failures: [insufficient-balance, missing-authorization, wrong-actor, invalid-amount]
+    behaviors: [burn-reduces-holder-balance, burn-beyond-balance-fails]
+
+  - id: burn-from
+    name: burn_from
+    requirement: required
+    summary: Burns amount from from, consuming spender's allowance.
+    description: >-
+      Authorized by the spender and limited by the allowance they hold over the
+      holder's balance. Fails if the allowance or the holder's balance is short.
+    args:
+      - name: spender
+        type:
+          kind: prim
+          name: address
+        semantics: The account authorizing the burn and whose allowance is consumed.
+        authorization:
+          required: true
+          semantics: The spender must authorize burning through the allowance they were granted.
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose balance is reduced by the burned amount.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The quantity of tokens to remove from circulation.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; both the balance and the allowance change.
+    mutability: mutating
+    invocation: invoke
+    authorization: [burn-from-requires-spender-authorization]
+    events: [burn]
+    failures: [insufficient-allowance, insufficient-balance, missing-authorization, wrong-actor]
+    behaviors: [burn-from-beyond-allowance-fails]
+
+  - id: decimals
+    name: decimals
+    requirement: required
+    summary: Returns the number of decimal places used to represent amounts.
+    description: >-
+      A fixed property of the token rather than of the caller. A caller that has
+      not initialized the contract may observe a failure instead of a value.
+    args: []
+    returns:
+      type:
+        kind: prim
+        name: u32
+      semantics: The number of decimal places used to interpret amounts of this token.
+    mutability: readonly
+    invocation: read_only
+    authorization: [reads-require-no-authorization]
+    events: []
+    failures: [uninitialized-metadata]
+    behaviors: [metadata-reads-do-not-mutate-state]
+
+  - id: name
+    name: name
+    requirement: required
+    summary: Returns the human-readable name of the token.
+    description: >-
+      Part of the descriptive metadata the token interface requires. Like the
+      other metadata reads, it may fail on a contract that has not been
+      initialized.
+    args: []
+    returns:
+      type:
+        kind: prim
+        name: string
+      semantics: The token's human-readable name.
+    mutability: readonly
+    invocation: read_only
+    authorization: [reads-require-no-authorization]
+    events: []
+    failures: [uninitialized-metadata]
+    behaviors: [metadata-reads-do-not-mutate-state]
+
+  - id: symbol
+    name: symbol
+    requirement: required
+    summary: Returns the short symbol of the token.
+    description: >-
+      Part of the descriptive metadata the token interface requires. Like the
+      other metadata reads, it may fail on a contract that has not been
+      initialized.
+    args: []
+    returns:
+      type:
+        kind: prim
+        name: string
+      semantics: The token's short symbol, conventionally a few uppercase characters.
+    mutability: readonly
+    invocation: read_only
+    authorization: [reads-require-no-authorization]
+    events: []
+    failures: [uninitialized-metadata]
+    behaviors: [metadata-reads-do-not-mutate-state]
