@@ -1,0 +1,78 @@
+name: Documentation
+
+# The indexes under `docs/generated/` are machine-written and committed, so they
+# can go stale while the profiles and vectors move on. A stale index is worse than
+# no index: it names vector identities and file locations that no longer exist, and
+# a reader has no way to tell. This workflow fails when the committed documents and
+# the generated ones differ, and never rewrites them itself — a bot that commits
+# documentation hides the fact that a contributor forgot to regenerate it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generated:
+    name: Check the generated reference indexes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify that the committed documentation matches the generated output
+        run: npm run docs:check
+
+      - name: Report how to regenerate, on failure
+        if: failure()
+        run: |
+          {
+            echo '### The generated indexes are out of date'
+            echo
+            echo 'Run `npm run docs:generate` and commit the result.'
+            echo
+            echo 'The indexes under `docs/generated/` are derived from the profile'
+            echo 'bundles and the vector corpus, so they change whenever a profile or'
+            echo 'vector is added, removed, renamed or reclassified.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  links:
+    name: Check the documentation for placeholder markers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # `release-check` refuses to let an unfinished requirement reach a normative
+      # artifact. Running it here as well means a documentation-only pull request
+      # still gets the verdict, because a placeholder is easiest to introduce while
+      # writing prose about a requirement that is not finished yet.
+      - name: Check that no placeholder marker reached the specification
+        run: npm run release:check

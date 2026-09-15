@@ -1,0 +1,60 @@
+name: Schema validation
+
+# The schemas are the part of this repository that every other artifact depends
+# on, so they are checked on their own. A change that breaks a schema should fail
+# as "the schemas are wrong", not as "profile validation failed", because the two
+# point a contributor at completely different files.
+#
+# This workflow runs in addition to `ci.yml`, which runs the same validator as one
+# step of a longer chain. Duplicating the check is deliberate: a schema-only pull
+# request gets a schema-only verdict in the pull request's status list.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "schema/**"
+      - "scripts/validate-schema.ts"
+      - "scripts/lib/schemas.ts"
+      - "scripts/lib/paths.ts"
+      - "tests/schema/**"
+      - ".github/workflows/schema-validation.yml"
+  pull_request:
+    paths:
+      - "schema/**"
+      - "scripts/validate-schema.ts"
+      - "scripts/lib/schemas.ts"
+      - "scripts/lib/paths.ts"
+      - "tests/schema/**"
+      - ".github/workflows/schema-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: schema-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  schemas:
+    name: Validate the normative schemas
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate the schemas
+        run: npm run validate:schemas
+
+      - name: Test schema acceptance and rejection
+        run: npx vitest run tests/schema

@@ -1,0 +1,79 @@
+name: CI
+
+# The whole specification is checked on every push and pull request. The steps
+# below are exactly `npm run ci`, decomposed so that a failure names the check
+# that failed rather than the umbrella script that invoked it.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Least privilege: nothing here writes to the repository, so nothing here is
+# granted permission to write to it.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  specification:
+    name: Validate the specification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Typecheck the tooling and the test suite
+        run: npm run typecheck
+
+      - name: Validate the schemas, profiles, vectors and release metadata
+        run: npm run validate
+
+      - name: Check that the generated documentation is current
+        run: npm run docs:check
+
+      - name: Run the test suite
+        run: npm test
+
+  tests:
+    name: Test on Node.js ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        # The declared engine floor and the current release are both tested, so
+        # that a specification tree that only works on one Node version is caught
+        # before a contributor on the other one hits it.
+        node: ["22.12", "24.x"]
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run the test suite
+        run: npm test

@@ -1,0 +1,67 @@
+name: Profile and vector validation
+
+# Profiles and vectors are the normative content of this repository, and they fail
+# in ways JSON Schema cannot see: a method that names an authorization rule nobody
+# declared, a vector whose inputs disagree with the signature it tests, an
+# operation directory that exists but is not declared. Those defects make a profile
+# look complete while enforcing less than it appears to, so they get their own
+# workflow where the failure is unambiguous.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "profiles/**"
+      - "vectors/**"
+      - "scripts/validate-profiles.ts"
+      - "scripts/check-vectors.ts"
+      - "scripts/lib/profile-bundle.ts"
+      - "scripts/lib/vectors.ts"
+      - "tests/profiles/**"
+      - "tests/vectors/**"
+      - ".github/workflows/profile-validation.yml"
+  pull_request:
+    paths:
+      - "profiles/**"
+      - "vectors/**"
+      - "scripts/validate-profiles.ts"
+      - "scripts/check-vectors.ts"
+      - "scripts/lib/profile-bundle.ts"
+      - "scripts/lib/vectors.ts"
+      - "tests/profiles/**"
+      - "tests/vectors/**"
+      - ".github/workflows/profile-validation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: profile-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  profiles:
+    name: Validate profile bundles and vectors
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate every profile bundle
+        run: npm run validate:profiles
+
+      - name: Validate the vector corpus
+        run: npm run validate:vectors
+
+      - name: Test bundle loading and the vector corpus
+        run: npx vitest run tests/profiles tests/vectors
