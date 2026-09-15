@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/report.schema.json",
+  "title": "Estamora Conformance Report",
+  "description": "The normative data model for a conformance report. This repository owns the semantics even though the runner produces the document, so that an independent implementation can emit a report Estamora tooling will accept. Two properties matter above all others. First, results are reported per assertion and per conformance dimension rather than as a single boolean, because interface compatibility, authorization, events, behaviour, state and invariants are independent claims and a caller must be able to see which of them failed. Second, the final status is one of six explicit values: collapsing every failure into one generic outcome would make it impossible to tell a non-conformant contract from a broken execution environment, and would invite reading a pass rate as a security guarantee.",
+  "type": "object",
+  "required": [
+    "estamora_spec_version",
+    "runner",
+    "generated_at",
+    "target",
+    "profile",
+    "vectors",
+    "configuration",
+    "results",
+    "summary",
+    "status"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "estamora_spec_version": {
+      "$ref": "profile.schema.json#/$defs/specFormatVersion"
+    },
+    "runner": {
+      "type": "object",
+      "description": "Which implementation produced the report, and at which version. Required for reproducibility: two runners may differ in behaviour and a report that does not name its producer cannot be re-verified.",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "description": "Version of the runner tool, independent of the profile version and of the format version."
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "target": {
+      "type": "object",
+      "description": "What was measured. The WASM hash is the strongest available identity for a contract, and is reported as null rather than omitted when it could not be resolved, so that the absence is visible.",
+      "required": ["contract", "network", "wasm_hash", "metadata"],
+      "additionalProperties": false,
+      "properties": {
+        "contract": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 128
+        },
+        "network": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64,
+          "description": "Network identifier, e.g. `local`, `testnet`, `mainnet`."
+        },
+        "wasm_hash": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Contract-supplied metadata, treated as untrusted input. Reports must be sanitised on render because this content is attacker-controlled."
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "description": "Which requirement set the result is attributed to, pinned by digest so that a result cannot be silently re-interpreted against a later revision of the same profile version.",
+      "required": ["id", "version", "digest"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/profileId"
+        },
+        "version": {
+          "$ref": "profile.schema.json#/$defs/profileVersion"
+        },
+        "digest": {
+          "$ref": "profile.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "vectors": {
+      "type": "object",
+      "required": ["digest", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "digest": {
+          "$ref": "profile.schema.json#/$defs/digest"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Execution configuration that could change the result, recorded so that an unexplained difference between two runs can be diagnosed."
+    },
+    "results": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/vectorResult"
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Per-dimension tallies. Dimensions are kept separate so that a passing interface section can never stand in for behavioural conformance.",
+      "required": ["interface", "authorization", "events", "behavior", "state", "invariants"],
+      "additionalProperties": false,
+      "properties": {
+        "interface": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "authorization": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "events": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "behavior": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "state": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "invariants": {
+          "$ref": "#/$defs/assertionSummary"
+        },
+        "failure": {
+          "$ref": "#/$defs/assertionSummary"
+        }
+      }
+    },
+    "status": {
+      "$ref": "#/$defs/conformanceStatus"
+    },
+    "exit_code": {
+      "type": "integer",
+      "description": "Process exit code the runner used, so that CI can reproduce the classification without re-deriving it."
+    }
+  },
+  "$defs": {
+    "conformanceStatus": {
+      "type": "string",
+      "enum": [
+        "CONFORMANT",
+        "PARTIALLY_CONFORMANT",
+        "NON_CONFORMANT",
+        "INCONCLUSIVE",
+        "EXECUTION_ERROR",
+        "PROFILE_ERROR"
+      ],
+      "description": "The six permitted final statuses. CONFORMANT means every required vector passed. PARTIALLY_CONFORMANT means some required vectors passed and some failed. NON_CONFORMANT means a required behavioural requirement was violated. INCONCLUSIVE means the suite could not decide. EXECUTION_ERROR means the environment failed and the contract is not to blame. PROFILE_ERROR means the requirements were unusable. Only the middle two describe the contract; the last two must never be reported as contract failures."
+    },
+    "assertionSummary": {
+      "type": "object",
+      "required": ["passed", "failed", "total"],
+      "additionalProperties": false,
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "warnings": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "resultStatus": {
+      "type": "string",
+      "enum": ["passed", "failed", "error", "skipped"]
+    },
+    "assertionOutcome": {
+      "type": "object",
+      "description": "One reported check. The expected and observed values are retained as text so that a failure is diagnosable without re-running the vector, which matters when the target is a remote network.",
+      "required": ["id", "category", "status", "expected", "observed"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "interface",
+            "authorization",
+            "event",
+            "behavior",
+            "state",
+            "invariant",
+            "failure"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed"]
+        },
+        "expected": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "observed": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "detail": {
+          "type": "string",
+          "maxLength": 4000
+        }
+      }
+    },
+    "vectorResult": {
+      "type": "object",
+      "required": ["vector_id", "category", "status", "assertions"],
+      "additionalProperties": false,
+      "properties": {
+        "vector_id": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 96
+        },
+        "category": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 32
+        },
+        "status": {
+          "$ref": "#/$defs/resultStatus"
+        },
+        "assertions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/assertionOutcome"
+          }
+        },
+        "diagnostics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["code", "message"],
+            "additionalProperties": false,
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 64
+              },
+              "message": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 2000
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
