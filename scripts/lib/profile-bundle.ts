@@ -29,6 +29,7 @@ import {
   type ProfileDocument,
 } from "./models.ts";
 import {
+  EXAMPLE_PROFILES_DIR,
   PROFILE_BUNDLE_FILES,
   PROFILES_DIR,
   REPO_ROOT,
@@ -104,7 +105,7 @@ export function discoverProfileDirectories(root: string = PROFILES_DIR): readonl
   const found: string[] = [];
   for (const idEntry of safeReadDir(root)) {
     const idPath = join(root, idEntry);
-    if (!isDirectory(idPath)) {
+    if (!isDirectory(idPath) || idEntry === "examples") {
       continue;
     }
     for (const versionEntry of safeReadDir(idPath)) {
@@ -115,6 +116,27 @@ export function discoverProfileDirectories(root: string = PROFILES_DIR): readonl
       if (existsSync(join(versionPath, PROFILE_BUNDLE_FILES.profile))) {
         found.push(versionPath);
       }
+    }
+  }
+  found.push(...discoverExampleProfiles(EXAMPLE_PROFILES_DIR));
+  return found.sort();
+}
+
+/**
+ * Discover example profiles.
+ *
+ * Examples use a flat layout, `profiles/examples/<name>/profile.yaml`, with no
+ * version directory. An example is a worked illustration rather than a released
+ * requirement set, so it carries a version inside its metadata instead of in its
+ * path, and forcing a version directory would suggest a release that does not
+ * exist. The validator reads the version from the metadata for these bundles.
+ */
+export function discoverExampleProfiles(root: string = EXAMPLE_PROFILES_DIR): readonly string[] {
+  const found: string[] = [];
+  for (const entry of safeReadDir(root)) {
+    const entryPath = join(root, entry);
+    if (isDirectory(entryPath) && existsSync(join(entryPath, PROFILE_BUNDLE_FILES.profile))) {
+      found.push(entryPath);
     }
   }
   return found.sort();
@@ -133,6 +155,9 @@ export function findMalformedVersionDirectories(
   for (const idEntry of safeReadDir(root)) {
     const idPath = join(root, idEntry);
     if (!isDirectory(idPath)) {
+      continue;
+    }
+    if (idEntry === "examples") {
       continue;
     }
     for (const versionEntry of safeReadDir(idPath)) {
@@ -230,9 +255,18 @@ function readIdentity(document: unknown, directory: string): ProfileIdentity | u
   if (metadata !== undefined && typeof metadata.id === "string") {
     return { id: metadata.id, version: String(metadata.version) };
   }
+  // A released profile is `<profiles>/<id>/<MAJOR.MINOR>`. An example profile is
+  // `<profiles>/examples/<name>` and has no version directory, so the metadata
+  // path above is the only source of its identity; falling back to the path here
+  // would invent the identity "examples@<name>".
   const parts = relative(PROFILES_DIR, directory).split(/[/\\]/u);
   const [id, version] = parts;
-  if (id !== undefined && version !== undefined && parseVersion(version) !== undefined) {
+  if (
+    id !== undefined &&
+    version !== undefined &&
+    parts.length === 2 &&
+    parseVersion(version) !== undefined
+  ) {
     return { id, version };
   }
   return undefined;
