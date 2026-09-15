@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/invariant.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/invariant.schema.json",
   "title": "Estamora Invariants",
   "description": "An invariant is a property that must hold across operations rather than a property of one call. Invariants are named, scoped and independently reported so that a vector can reuse them and a report can say which invariant broke rather than which call failed. They are deliberately first-class: expressing \"balances are conserved\" as a comment would make it unenforceable and unreviewable. Every invariant carries a rationale, because an unexplained invariant is one nobody can safely remove.",
   "type": "object",

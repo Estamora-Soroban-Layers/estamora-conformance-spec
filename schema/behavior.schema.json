@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/behavior.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/behavior.schema.json",
   "title": "Estamora Behavioral Rules",
   "description": "Behavioural conformance is the defining feature of Estamora. Interface compatibility alone is insufficient because a contract can expose every expected method with every expected signature and still move the wrong amount, to the wrong account, while emitting an event that says otherwise. A behavioural rule states what must be true before an operation, what must be true after it, which outputs and events are required, and which are forbidden, without embedding executable logic in the profile. Each rule is independent of any concrete input, so a vector can be checked against it.",
   "type": "object",

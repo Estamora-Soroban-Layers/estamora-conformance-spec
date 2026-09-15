@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/failure.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/failure.schema.json",
   "title": "Estamora Failure Requirements",
   "description": "Negative testing is mandatory: behavioural conformance cannot be established by exercising only successful calls, because a contract that silently succeeds where the specification requires a rejection is the most dangerous kind of non-conformance. Soroban signals failure by trapping, and the trap payload is implementation-defined, so pinning an exact error symbol would reject conforming contracts. Estamora therefore standardises the semantic category of a failure, and lets a profile opt in to constraining the payload where the upstream specification genuinely defines it.",
   "type": "object",

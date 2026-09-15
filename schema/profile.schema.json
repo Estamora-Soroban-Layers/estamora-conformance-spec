@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/profile.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/profile.schema.json",
   "title": "Estamora Conformance Profile",
   "description": "Metadata document for one versioned conformance profile. A profile is the normative statement of what a Soroban contract must do in order to claim that it implements a given interface. This document identifies the profile, pins the upstream specification it encodes, and names the six requirement collections plus the vector directories that together form the bundle.",
   "type": "object",

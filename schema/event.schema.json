@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/event.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/event.schema.json",
   "title": "Estamora Event Requirements",
   "description": "Events are part of behavioural compatibility, not decoration. Downstream systems such as indexers, block explorers and wallets reconstruct state from the event log, so a contract that moves value correctly but emits the wrong event, the wrong number of events, or values that disagree with the state change is not conformant. This schema therefore makes topics, payload shape, value bindings, cardinality and ordering all expressible, and binds event values to the state they are supposed to describe.",
   "type": "object",

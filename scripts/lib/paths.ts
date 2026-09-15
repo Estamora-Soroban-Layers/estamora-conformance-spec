@@ -82,7 +82,8 @@ export type SchemaFileName = (typeof SCHEMA_FILES)[number];
 export const JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema";
 
 /** Base URI used as the `$id` prefix for every Estamora schema. */
-export const SCHEMA_ID_BASE = "https://estamora.dev/schema/";
+export const SCHEMA_ID_BASE =
+  "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/";
 
 /**
  * Walk upwards from this module until a directory containing `package.json`

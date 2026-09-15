@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/assertion.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/assertion.schema.json",
   "title": "Estamora Assertion Vocabulary",
   "description": "The reusable expression and assertion vocabulary. Every check Estamora performs is ultimately a predicate evaluated against an observed execution, and a claim a profile makes must be a value the runner can compute without executing profile-supplied code. The algebra is total and non-Turing-complete on purpose: profiles are untrusted input, so a requirement is data to be evaluated by the runner, never a program to be run. This document also defines the standalone assertion-set shape that lets a suite of checks be named, categorised and reported individually.",
   "type": "object",

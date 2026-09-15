@@ -135,3 +135,30 @@ document changes in a way that a reader written against the previous shape canno
 handle. Adding an optional field does not change the format version. Removing a
 field, renaming one, changing an enum, or tightening a requirement in a way that
 makes a previously valid document invalid does.
+
+## Canonical identifiers
+
+Every schema declares a `$id`, which is the URL it is published at. This is not a
+convenience for editors: a `$ref` between two schemas is resolved against the `$id`
+of the document that contains it, so the `$id` is what a consumer's validator
+fetches. The base is a single constant in `scripts/lib/paths.ts`, and
+`validate-schema.ts` fails the build when a schema's `$id` is not exactly the
+canonical URI for its filename or when two schemas claim the same one.
+
+Because the `$id` is a promise that something is served at that URL, the rule for
+it is stricter than for anything else in this repository:
+
+- **The base must resolve.** A `$id` naming a host that serves nothing turns a
+  machine-readable specification into one that can only be checked from inside a
+  checkout. A base is therefore not adopted until its schemas are being served.
+- **Changing the base is a breaking change to the format**, not an edit. It
+  changes every `$id` and therefore every reference a consumer holds, so it takes
+  the same treatment as any other incompatible change: a MAJOR format version, a
+  changelog entry, and a release note saying what to re-point.
+- **It is a defect, not a design choice, for a released `$id` to 404.** Where that
+  happens the correction is an erratum in the next patch release, recorded in
+  `CHANGELOG.md`, rather than a quiet edit to a published identifier.
+
+The same rule applies to profile identities. `sep-41@1.0` is a claim about a set of
+requirements, and the directory that holds them is derived from the identity, not
+the other way round.

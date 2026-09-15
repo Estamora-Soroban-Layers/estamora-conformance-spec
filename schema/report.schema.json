@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/report.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/report.schema.json",
   "title": "Estamora Conformance Report",
   "description": "The normative data model for a conformance report. This repository owns the semantics even though the runner produces the document, so that an independent implementation can emit a report Estamora tooling will accept. Two properties matter above all others. First, results are reported per assertion and per conformance dimension rather than as a single boolean, because interface compatibility, authorization, events, behaviour, state and invariants are independent claims and a caller must be able to see which of them failed. Second, the final status is one of six explicit values: collapsing every failure into one generic outcome would make it impossible to tell a non-conformant contract from a broken execution environment, and would invite reading a pass rate as a security guarantee.",
   "type": "object",

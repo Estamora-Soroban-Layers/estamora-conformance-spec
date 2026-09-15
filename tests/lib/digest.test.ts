@@ -46,7 +46,8 @@ describe("digestOfValue", () => {
 describe("digestOfArtifact", () => {
   it("ignores the $schema declaration and generated metadata", () => {
     const artifact = {
-      $schema: "https://estamora.dev/schema/vector.schema.json",
+      $schema:
+        "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/vector.schema.json",
       metadata: { generated: "2026-09-15T00:00:00Z" },
       id: "example",
     };

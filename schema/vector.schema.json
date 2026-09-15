@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/vector.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/vector.schema.json",
   "title": "Estamora Test Vector",
   "description": "A test vector is a first-class specification artifact, not a test fixture in a runner-specific format. It describes a deterministic world, one operation against it, and exactly what must be observed. Vectors must be declarative because two independent implementations, in different languages, must be able to execute the same vector and reach the same verdict; a vector that embedded runner logic would make that impossible. The same document shape is used by the shared library, including the profile-independent scenarios under `vectors/common/`, and by profile bundles, so a runner needs exactly one vector parser.",
   "type": "object",

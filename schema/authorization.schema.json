@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/authorization.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/authorization.schema.json",
   "title": "Estamora Authorization Requirements",
   "description": "Authorization is a first-class conformance dimension, not a side effect of calling a method. Estamora requires the model to distinguish authorized success from unauthorized failure and from wrong-actor failure, because a contract that returns an error in all three cases is not conformant: it accepted a signature it should have rejected, or rejected one it should have accepted, or asked the wrong principal to sign. Distinguishing these cases is what stops the specification from degenerating into \"the call returned an error, so it must be correct\".",
   "type": "object",

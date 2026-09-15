@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://estamora.dev/schema/method.schema.json",
+  "$id": "https://estamora-soroban-layers.github.io/estamora-conformance-spec/schema/method.schema.json",
   "title": "Estamora Method Requirements",
   "description": "Machine-readable description of the interface a conforming contract must expose. Estamora checks behaviour as well as shape, but a behavioural result is meaningless if the interface it was measured through is ambiguous, so arguments, return values, mutability and authorization participation are all stated explicitly. Type expressions are deliberately language-neutral: a profile author describes a signature structurally rather than writing Rust.",
   "type": "object",
