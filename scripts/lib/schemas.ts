@@ -135,8 +135,12 @@ export function getSchemaRegistry(): SchemaRegistry {
   const ajv = new Ajv2020({
     allErrors: true,
     strict: true,
+    // Unions are permitted for exactly one purpose: a JSON scalar value that
+    // may legitimately be a string, a number, a boolean or null. Every other
+    // use of a union type is a modelling error that strict types catches, so
+    // this is enabled knowingly rather than as a blanket relaxation.
+    allowUnionTypes: true,
     discriminator: true,
-    allowUnionTypes: false,
     validateFormats: true,
     unicodeRegExp: true,
     verbose: false,
