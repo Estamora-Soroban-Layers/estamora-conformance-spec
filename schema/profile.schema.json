@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/profile.schema.json",
+  "title": "Estamora Conformance Profile",
+  "description": "Metadata document for one versioned conformance profile. A profile is the normative statement of what a Soroban contract must do in order to claim that it implements a given interface. This document identifies the profile, pins the upstream specification it encodes, and names the six requirement collections plus the vector directories that together form the bundle.",
+  "type": "object",
+  "required": ["estamora_spec_version", "profile", "includes"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Optional self-reference to this schema, for editor completion."
+    },
+    "estamora_spec_version": {
+      "$ref": "#/$defs/specFormatVersion"
+    },
+    "profile": {
+      "$ref": "#/$defs/profileMetadata"
+    },
+    "includes": {
+      "$ref": "#/$defs/bundleManifest"
+    }
+  },
+  "$defs": {
+    "specFormatVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Version of the Estamora specification *format* this document is written against. Independent of the profile version and of any runner version. Bumped only when the document grammar changes in a way consumers must know about."
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 64,
+      "description": "Lowercase kebab-case identifier. Identifiers are the namespace in which requirement rules cross-reference each other, so they must be stable and human-typable."
+    },
+    "profileId": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 2,
+      "maxLength": 64,
+      "description": "Profile identifier, e.g. `sep-41`. Used to form the canonical `<id>@<version>` reference that the runner accepts."
+    },
+    "profileVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "description": "Profile revision, e.g. `1.0`. Independent of the runner version and of the Estamora format version. A change to any behavioural requirement requires a new version."
+    },
+    "identityRef": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*@\\d+\\.\\d+(?:\\.\\d+)?$",
+      "description": "A canonical `<id>@<version>` reference to another profile, used to record supersession relationships."
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$",
+      "description": "Content digest of a specification artifact, computed over its canonical JSON form."
+    },
+    "profileStatus": {
+      "type": "string",
+      "enum": ["draft", "experimental", "stable", "deprecated"],
+      "description": "Lifecycle stage. `draft` may change without notice, `experimental` is executable but unreviewed, `stable` requires a version bump for behavioural change, and `deprecated` must name a successor."
+    },
+    "requirementStatus": {
+      "type": "string",
+      "enum": ["required", "optional", "forbidden"],
+      "description": "Whether a requirement must be satisfied, may be satisfied, or must be absent."
+    },
+    "githubHandle": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9]|-(?=[A-Za-z0-9])){0,38}$",
+      "description": "A GitHub account handle, used to record profile maintainers."
+    },
+    "prose": {
+      "type": "string",
+      "minLength": 10,
+      "maxLength": 4000,
+      "description": "Human-readable prose. A minimum length is enforced because a one-word explanation does not let a reviewer check whether the requirement matches the upstream specification."
+    },
+    "specificationReference": {
+      "type": "object",
+      "description": "The upstream specification this profile encodes, pinned to an exact revision. Estamora never claims to implement a specification version it has not encoded, so this field is required and is validated against the profile's provenance block.",
+      "required": ["name", "title", "version", "status", "url", "updated"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "description": "Specification number as published upstream, e.g. `SEP-0041`."
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Title of the upstream specification."
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+          "description": "Version of the upstream document itself. This is not the Estamora profile version."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "review", "final", "living", "deprecated", "superseded", "unknown"],
+          "description": "Lifecycle status reported by the upstream document at the pinned revision."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://",
+          "description": "Canonical HTTPS URL of the pinned upstream revision."
+        },
+        "updated": {
+          "type": "string",
+          "format": "date",
+          "description": "The upstream document's own `Updated` date at the pinned revision, so that reviewers can tell which revision was read."
+        }
+      }
+    },
+    "profileMetadata": {
+      "type": "object",
+      "required": [
+        "id",
+        "version",
+        "title",
+        "status",
+        "summary",
+        "description",
+        "license",
+        "specification",
+        "maintainers",
+        "compatibility",
+        "provenance"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/profileId"
+        },
+        "version": {
+          "$ref": "#/$defs/profileVersion"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "status": {
+          "$ref": "#/$defs/profileStatus"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 300,
+          "description": "One-sentence statement of the interface this profile describes."
+        },
+        "description": {
+          "$ref": "#/$defs/prose"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 3,
+          "description": "SPDX license identifier governing reuse of this profile, e.g. `Apache-2.0`."
+        },
+        "specification": {
+          "$ref": "#/$defs/specificationReference"
+        },
+        "supersedes": {
+          "$ref": "#/$defs/identityRef",
+          "description": "Identity this profile replaces, in `<id>@<version>` form."
+        },
+        "superseded_by": {
+          "$ref": "#/$defs/identityRef",
+          "description": "Identity that replaces this profile. Required when status is `deprecated`."
+        },
+        "maintainers": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/githubHandle"
+          },
+          "description": "Accounts accountable for keeping this profile aligned with the upstream specification."
+        },
+        "compatibility": {
+          "$ref": "#/$defs/compatibilityBlock"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenanceBlock"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "deprecated"
+              }
+            },
+            "required": ["status"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "superseded_by": {
+                "$ref": "#/$defs/identityRef"
+              }
+            },
+            "required": ["superseded_by"]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "status": {
+                  "const": "deprecated"
+                }
+              },
+              "required": ["status"]
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "superseded_by": false
+            },
+            "description": "A profile that has not been deprecated must not name a successor, because a successor recorded on a live profile would let a consumer skip a revision that is still the current requirement set."
+          }
+        }
+      ]
+    },
+    "compatibilityBlock": {
+      "type": "object",
+      "description": "How completely this profile covers the upstream interface, and what a consumer must know before trusting a conformance result.",
+      "required": ["interface", "notes"],
+      "additionalProperties": false,
+      "properties": {
+        "interface": {
+          "type": "string",
+          "enum": ["full", "partial"],
+          "description": "`full` means every method and event of the upstream interface is modelled. `partial` means some parts are not modelled, and the reason must appear in `notes`."
+        },
+        "notes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/prose"
+          },
+          "description": "Known divergences, upstream ambiguities and deliberate scoping decisions. Required to be non-empty so that a profile can never be silent about its own limits."
+        }
+      }
+    },
+    "provenanceBlock": {
+      "type": "object",
+      "description": "Where the requirements came from, and where interpretation was required. Estamora forbids inventing requirements, so every departure from the literal upstream text must be recorded here.",
+      "required": ["source", "derived_from", "interpretation_notes"],
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "upstream-specification",
+            "upstream-implementation",
+            "ecosystem-convention",
+            "composite"
+          ],
+          "description": "The class of authority the requirements were taken from."
+        },
+        "derived_from": {
+          "type": "string",
+          "minLength": 3,
+          "description": "Exact revision the requirements were read from, e.g. `stellar-protocol@master ecosystem/sep-0041.md v0.5.1`."
+        },
+        "interpretation_notes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/prose"
+          },
+          "description": "Each entry states an upstream ambiguity and the reading this profile adopts. Empty is only acceptable when the upstream text is fully explicit."
+        }
+      }
+    },
+    "bundleManifest": {
+      "type": "object",
+      "description": "Names the documents and vector directories that make up the bundle. Paths are relative to the profile directory and may not escape it.",
+      "required": [
+        "methods",
+        "authorization",
+        "events",
+        "behavior",
+        "invariants",
+        "failures",
+        "vectors",
+        "shared_vectors"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "methods": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "authorization": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "events": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "behavior": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "invariants": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "failures": {
+          "$ref": "#/$defs/bundleFileName"
+        },
+        "vectors": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          },
+          "description": "Operation directory names this profile owns inside its own `vectors/`."
+        },
+        "shared_vectors": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          },
+          "description": "Shared vector sets under the repository-level `vectors/` directory that this profile consumes, e.g. `common` and `sep-41`."
+        }
+      }
+    },
+    "bundleFileName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._-]+\\.ya?ml$",
+      "description": "A bundle document name. Must be a bare filename so that a profile cannot reference content outside its own directory."
+    }
+  }
+}
