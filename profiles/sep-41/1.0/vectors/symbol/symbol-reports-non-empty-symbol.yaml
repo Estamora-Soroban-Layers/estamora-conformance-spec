@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: symbol-reports-non-empty-symbol
+profile: sep-41
+profile_version: "1.0"
+title: The token symbol is reported as a non-empty string and reading it changes nothing
+description: >-
+  As with the name, SEP-0041 requires a symbol but leaves its value to the
+  implementation, so this vector asserts non-emptiness rather than a specific
+  string. The symbol is the value an exchange or wallet displays in the narrowest
+  column of its interface, which makes an empty symbol more consequential than it
+  looks: the token becomes unidentifiable in exactly the places a user is asked to
+  confirm a transfer.
+kind: positive
+method: symbol
+tags: [symbol, metadata, positive]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: A funded account, so the state assertions have something to observe.
+  balances:
+    alice: "1000"
+  allowances: []
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs: {}
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: symbol-read-preserves-balances
+      description: Reading the symbol must not change the sum of balances.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: unchanged
+        target:
+          kind: sum
+          over: balances
+  events:
+    required: []
+    forbidden: [transfer, approve, burn, mint, clawback]
+  invariants: []
+
+assertions:
+  - id: symbol-is-not-empty
+    category: behavior
+    description: The reported symbol must not be the empty string.
+    predicate:
+      kind: not_equal
+      left:
+        kind: read
+        method: symbol
+        args: []
+      right:
+        kind: literal
+        value: ""
+
+rationale: >-
+  Descriptive metadata fails quietly. A contract can expose every method correctly
+  and still return an empty symbol, and nothing in an interface-presence check
+  would notice. Asserting non-emptiness is the strongest claim the specification
+  actually supports, and stating it explicitly is better than leaving the value
+  wholly unexamined.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface
