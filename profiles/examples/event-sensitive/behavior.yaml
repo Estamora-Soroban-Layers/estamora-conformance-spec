@@ -1,0 +1,89 @@
+# yaml-language-server: $schema=../../../schema/behavior.schema.json
+behaviors:
+  - id: publish-emits-one-message-and-counts-it
+    summary: A successful publish stores the payload and emits both required events exactly once.
+    description: >-
+      The rule joins the two halves of the requirement that cannot be checked
+      separately: the payload the event states must be the payload the contract
+      returns, and both events must be present exactly once. A contract that emits
+      `message` without `message_count` satisfies the state requirement while
+      leaving consumers without the sequence record they need.
+    method: publish
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: not_equal
+        left:
+          kind: read
+          method: last_message
+          args:
+            - kind: input
+              name: topic
+        right:
+          kind: literal
+          value: ""
+    expect_failures: []
+    expect_events:
+      - message
+      - message-count
+    forbid_events: []
+    invariants:
+      - stored-payload-matches-published-payload
+    notes:
+      - >-
+        The postcondition asserts that the topic is no longer empty rather than
+        asserting an exact value, because the published payload is an argument: an
+        exact value would have to be repeated from the fixture, and would stop
+        holding the moment the fixture changed.
+
+  - id: publish-with-empty-payload-fails
+    summary: A publish with an empty payload must fail and emit nothing.
+    description: >-
+      Requiring the events to be absent is the point of the rule. A contract that
+      emits before validating tells every consumer that a message was stored which
+      the contract never stored, and the error path is exactly where that mistake is
+      made and least often tested.
+    method: publish
+    kind: failure
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: last_message
+          args:
+            - kind: input
+              name: topic
+    expect_failures:
+      - empty-payload
+    expect_events: []
+    forbid_events:
+      - message
+      - message-count
+    invariants:
+      - failed-publish-cannot-mutate
+
+  - id: last-message-of-unknown-topic-is-empty
+    summary: Reading a topic that was never published reports an absent payload rather than failing.
+    description: >-
+      A read must never trap for a syntactically valid topic, because every consumer
+      that displays the log would otherwise have to special-case the topics it has
+      never seen.
+    method: last-message
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: equal
+        left:
+          kind: read
+          method: last_message
+          args:
+            - kind: input
+              name: topic
+        right:
+          kind: literal
+          value: ""
+    expect_failures: []
+    expect_events: []
+    forbid_events: []
+    invariants: []

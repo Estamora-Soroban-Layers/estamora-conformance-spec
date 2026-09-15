@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=../../../schema/failure.schema.json
+failures:
+  - id: empty-payload
+    category: invalid_argument
+    summary: A publish with an empty payload must be rejected and emit nothing.
+    description: >-
+      The call must fail, the stored payload for the named topic must be unchanged,
+      and neither event may be emitted. The event requirement is the part that cannot
+      be inferred from the state: a contract that emits `message` before validating
+      its arguments leaves a log entry for a write it then refused.
+    methods:
+      - publish
+    trigger: The `payload` argument is the empty string.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      An empty payload is the smallest possible invalid argument, which makes it the
+      cheapest case in which to check that validation happens before any observable
+      effect. A contract that validates after emitting is indistinguishable from a
+      correct one under a suite that only inspects state.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=../../../schema/event.schema.json
+events:
+  - id: message
+    name: message
+    requirement: required
+    summary: Exactly one message event must describe a successful publish.
+    description: >-
+      The event is the log consumers read. A publish that settles without emitting
+      it, or emits it twice, leaves every consumer with a different history from the
+      contract's own state. The payload field is bound to the operation's `payload`
+      argument rather than to a literal, so the requirement survives a change of
+      fixture.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: message
+        semantics: The event discriminator, which separates this event from the sequence event.
+      - index: 1
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: input
+          name: topic
+        semantics: The topic the payload was stored under, which must be the topic the caller supplied.
+    data:
+      format: map
+      fields:
+        - name: payload
+          type:
+            kind: prim
+            name: string
+          binding:
+            kind: input
+            name: payload
+          semantics: The stored content, which must equal what last_message returns for this topic.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations:
+      - stored-payload-matches-published-payload
+    notes:
+      - >-
+        The correlation is what makes a wrong payload detectable. An event that
+        states one payload while the contract stores another passes a structural
+        check of the event alone, and is caught only by comparing the event against
+        the state the read-only method reports.
+
+  - id: message-count
+    name: message_count
+    requirement: required
+    summary: Exactly one message_count event must accompany a successful publish.
+    description: >-
+      A second event from the same call, required alongside the first. Consumers
+      that need to detect a gap in the log depend on a per-publish record, and a
+      contract that omits it leaves them unable to tell a lost event from one that
+      never happened. Because the interface exposes no accessor for the counter, the
+      profile requires the event and its field to be present without binding the
+      field to a value it cannot observe.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: message_count
+        semantics: The event discriminator for the sequence event.
+    data:
+      format: scalar
+      fields:
+        - name: sequence
+          type:
+            kind: prim
+            name: u32
+          binding:
+            kind: unconstrained
+          semantics: >-
+            The profile requires this field to be present with the declared type but
+            does not constrain its value, because the interface defines no accessor
+            through which the counter could be read back. Leaving the binding open is
+            the honest choice: a binding invented for it would assert a value the
+            runner cannot verify.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations: []
+    notes:
+      - >-
+        This event pins the scalar data encoding, in contrast to the map form used
+        by `message`, so that a reader can see both encodings validated side by side
+        rather than being told that both are supported.
+      - >-
+        `correlations` is empty because the invariant in this bundle is about the
+        payload the `message` event carries; the counter event is correlated with the
+        publish through its cardinality rather than through a state assertion.

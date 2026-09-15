@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=../../../schema/method.schema.json
+methods:
+  - id: publish
+    name: publish
+    requirement: required
+    summary: Store a payload under a topic and announce the store through two events.
+    description: >-
+      The only mutating method. It must be authorized by the invoker, it must reject
+      an empty payload, and on success it must emit exactly one `message` event and
+      exactly one `message_count` event. The payload stated by the event must be the
+      payload the read-only method subsequently returns.
+    args:
+      - name: topic
+        type:
+          kind: prim
+          name: symbol
+        semantics: The topic the payload is stored under. Publishing to an existing topic replaces its payload.
+      - name: payload
+        type:
+          kind: prim
+          name: string
+        semantics: The content to store. Must be non-empty; an empty payload is rejected rather than stored.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the effect is observable through last_message and the two events.
+    mutability: mutating
+    invocation: invoke
+    authorization:
+      - publisher-authorizes-publish
+    events:
+      - message
+      - message-count
+    failures:
+      - empty-payload
+    behaviors:
+      - publish-emits-one-message-and-counts-it
+      - publish-with-empty-payload-fails
+    notes:
+      - >-
+        The method declares two events, and the profile requires both. A contract
+        that emits only `message` leaves consumers that track the sequence without a
+        way to order the log, and a profile that declared `message_count` optional
+        could not state that.
+
+  - id: last-message
+    name: last_message
+    requirement: required
+    summary: Return the payload currently stored under a topic.
+    description: >-
+      A read-only query. It must succeed for any topic, including one that was never
+      published, which must report an absent payload rather than trapping. It is what
+      makes the event log verifiable: the payload an event claims was stored can be
+      compared against the payload this method returns.
+    args:
+      - name: topic
+        type:
+          kind: prim
+          name: symbol
+        semantics: The topic whose stored payload is read. Any caller may read any topic.
+        authorization:
+          required: false
+          semantics: >-
+            Reading is public. Requiring authorization would make the log unreadable
+            by the consumers it exists for.
+    returns:
+      type:
+        kind: prim
+        name: string
+      semantics: The stored payload, or the empty string when the topic has never been published.
+    mutability: readonly
+    invocation: read_only
+    authorization:
+      - last-message-requires-no-authorization
+    events: []
+    failures: []
+    behaviors:
+      - last-message-of-unknown-topic-is-empty

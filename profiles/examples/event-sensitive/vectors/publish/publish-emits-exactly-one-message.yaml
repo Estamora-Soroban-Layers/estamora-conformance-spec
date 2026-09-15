@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: publish-emits-exactly-one-message
+profile: event-sensitive
+profile_version: "0.1"
+title: A successful publish emits one message and one message_count event
+description: >-
+  The caller publishes "hello" under the topic "greeting". The contract must store
+  it, emit exactly one `message` event naming that topic and carrying that payload,
+  and emit exactly one `message_count` event. Afterwards reading the topic must
+  return the same payload, which is what turns the events from claims into evidence
+  about the contract's state.
+kind: event
+method: publish
+tags: [publish, event, positive, state]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The publishing account, whose authorization the call requires and presents.
+  balances:
+    alice: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs:
+  topic:
+    kind: literal
+    value: greeting
+  payload:
+    kind: literal
+    value: hello
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: stored-payload-is-readable
+      description: The payload the event named must be the payload the contract returns.
+      resource:
+        kind: custom
+        name: stored_payload
+        read:
+          kind: read
+          method: last_message
+          args:
+            - kind: literal
+              value: greeting
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: last_message
+          args:
+            - kind: literal
+              value: greeting
+        right:
+          kind: literal
+          value: hello
+  events:
+    required:
+      - event: message
+        topics:
+          - kind: literal
+            value: message
+          - kind: literal
+            value: greeting
+        data:
+          - kind: literal
+            value: hello
+      - event: message-count
+        topics:
+          - kind: literal
+            value: message_count
+        data:
+          - kind: literal
+            value: "1000"
+    forbidden: []
+  invariants:
+    - stored-payload-matches-published-payload
+
+assertions:
+  - id: publish-is-not-a-no-op
+    category: event
+    description: The publish must actually store something rather than emitting events alone.
+    predicate:
+      kind: not_equal
+      left:
+        kind: read
+        method: last_message
+        args:
+          - kind: literal
+            value: greeting
+      right:
+        kind: literal
+        value: ""
+
+rationale: >-
+  Establishes that the event log and the contract's state agree, which is the property
+  every consumer of the log depends on. Without this vector, a contract that emits
+  correct events while storing nothing would pass the structural event checks alone.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

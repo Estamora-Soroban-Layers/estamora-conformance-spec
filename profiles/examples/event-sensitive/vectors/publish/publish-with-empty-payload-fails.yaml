@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: publish-with-empty-payload-fails
+profile: event-sensitive
+profile_version: "0.1"
+title: A publish with an empty payload fails and emits no event
+description: >-
+  The caller attempts to publish an empty payload under the topic "greeting". The
+  invocation must be rejected, the stored payload for that topic must be unchanged,
+  and neither the `message` nor the `message_count` event may be emitted. This
+  vector is mandatory for the profile: a contract that emits its events before
+  validating its arguments passes every structural event check while telling
+  consumers that a message was stored which was never stored.
+kind: negative
+method: publish
+tags: [publish, negative, event, state, authorization]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The publishing account, whose authorization the call presents.
+  balances:
+    alice: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs:
+  topic:
+    kind: literal
+    value: greeting
+  payload:
+    kind: literal
+    value: ""
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: failure
+  failure: empty-payload
+  state_assertions:
+    - id: stored-payload-unchanged
+      description: A rejected publish must leave the topic's stored payload untouched.
+      resource:
+        kind: custom
+        name: stored_payload
+        read:
+          kind: read
+          method: last_message
+          args:
+            - kind: literal
+              value: greeting
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: last_message
+          args:
+            - kind: literal
+              value: greeting
+  events:
+    required: []
+    forbidden:
+      - message
+      - message-count
+  invariants:
+    - failed-publish-cannot-mutate
+
+assertions:
+  - id: nothing-was-stored
+    category: event
+    description: The rejected publish must not have stored the empty payload either.
+    predicate:
+      kind: equal
+      left:
+        kind: read
+        method: last_message
+        args:
+          - kind: literal
+            value: greeting
+      right:
+        kind: literal
+        value: ""
+
+rationale: >-
+  The vector exists to catch the specific mistake of emitting a log entry before
+  validating arguments. State assertions alone cannot see it, because a contract that
+  emits and then rejects leaves no state change behind; only requiring the absence of
+  both events makes the failure observable.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

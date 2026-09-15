@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=../../../schema/authorization.schema.json
+authorization_rules:
+  - id: publisher-authorizes-publish
+    summary: A publish must be authorized by the invoking account.
+    description: >-
+      The actor is the invoker rather than an argument, because the interface has no
+      notion of publishing on another account's behalf: the payload is attributed to
+      whoever wrote it, and there is no field that names a different author. A
+      profile that modelled the actor as an argument would be inventing a parameter
+      the interface does not have.
+    methods:
+      - publish
+    actor:
+      kind: invoker
+    coverage:
+      # The invoker is not passed as an argument, so there is no argument for the
+      # authorization to cover. `at_most` with an empty set states that, and the
+      # schema enforces it: a rule whose actor is the invoker may not name coverage
+      # arguments, because there are none to name.
+      mode: at_most
+      arguments: []
+    unauthorized:
+      kind: fail
+      failure: empty-payload
+    wrong_actor:
+      kind: fail
+      failure: empty-payload
+    replay_sensitive: false
+    notes:
+      - >-
+        Both rejection outcomes name `empty-payload` because this interface defines
+        no dedicated authorization failure: with the actor taken from the
+        invocation, there is no argument whose value a profile could distinguish
+        "wrong actor" by, so the two routes are the same rejection in practice. A
+        profile with a richer failure vocabulary would use two categories; this
+        example shows that the model allows the honest answer instead of forcing a
+        distinction that the interface cannot make.
+      - >-
+        The rule is not replay sensitive. Publishing the same payload twice replaces
+        the stored payload with an identical value, so a replay cannot move value or
+        change an observable outcome.
+
+  - id: last-message-requires-no-authorization
+    summary: Reading a stored payload must be possible without authorization.
+    description: >-
+      The rule exists so that the absence of an authorization requirement is a
+      stated decision rather than an omission. The model requires every method to be
+      governed by a rule, so a method with no actor needs a rule that says so.
+    methods:
+      - last-message
+    actor:
+      kind: none
+    coverage:
+      mode: at_most
+      arguments: []
+    unauthorized:
+      kind: succeed
+    wrong_actor:
+      kind: succeed
+    replay_sensitive: false
+    notes:
+      - >-
+        Both rejection outcomes are `succeed` because there is no authorization to
+        reject.

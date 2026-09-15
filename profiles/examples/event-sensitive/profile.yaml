@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=../../../schema/profile.schema.json
+#
+# A worked example whose subject is events.
+#
+# One mutating method that must emit two events, and one read-only method that
+# makes the effect of a publish observable without trusting the event log. The
+# example demonstrates cardinality, payload structure, the correlation between an
+# event and a state assertion, and — most importantly — that a failed call must
+# emit nothing at all. It validates.
+estamora_spec_version: "1.0"
+
+profile:
+  id: event-sensitive
+  version: "0.1"
+  title: Event-Sensitive Message Log
+  status: experimental
+  summary: A two-method message interface used to illustrate how Estamora models events.
+  description: >-
+    The interface records a payload under a topic and can read the payload back.
+    Every successful publish must emit exactly one `message` event carrying the
+    published payload and exactly one `message_count` event carrying the ledger
+    sequence, and the two are correlated with the invariant that what the event
+    log says was stored is what the read-only method returns.
+
+    A failed publish must emit neither event. That requirement is the reason this
+    example exists: a contract that emits its events before validating its
+    arguments tells every consumer a message was stored that the contract never
+    stored, and no amount of state assertion alone catches it.
+
+  license: Apache-2.0
+
+  specification:
+    name: EXAMPLE-0004
+    title: Event-Sensitive Message Log
+    version: "0.1"
+    status: draft
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+    updated: "2026-09-15"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        Both methods are required, and both events are required. An optional event
+        is modelled with `requirement: optional` and would still carry a payload
+        requirement, because an event that is emitted is bound by its structure
+        whether or not its emission was mandatory.
+
+  provenance:
+    source: composite
+    derived_from: Estamora example set, written for documentation purposes
+    interpretation_notes:
+      - >-
+        The interface is invented for this example, so every requirement is an
+        interpretation rather than a transcription of an upstream text. It is
+        recorded here so that the absence of a citation is a documented choice.
+      - >-
+        The example deliberately uses one event with a map payload and one with a
+        scalar payload, so that a reader can see both encodings validated side by
+        side rather than being told that both are supported.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - publish
+  shared_vectors:
+    - common

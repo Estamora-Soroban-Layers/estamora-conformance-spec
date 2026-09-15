@@ -1,0 +1,57 @@
+# yaml-language-server: $schema=../../../schema/invariant.schema.json
+invariants:
+  - id: stored-payload-matches-published-payload
+    title: What the event log says was stored is what the contract returns
+    kind: predicate
+    severity: error
+    summary: After a successful publish, reading the topic must return the published payload.
+    description: >-
+      The invariant is what turns the event from a claim into evidence. An event
+      that states one payload while the contract stores another is structurally
+      valid, so only a comparison against the state the read-only method reports can
+      detect it. Scoping the rule to the success outcome keeps it from being applied
+      to a call that was supposed to change nothing.
+    scope:
+      methods:
+        - publish
+      outcomes:
+        - success
+    predicate:
+      kind: equal
+      left:
+        kind: read
+        method: last_message
+        args:
+          - kind: input
+            name: topic
+      right:
+        kind: input
+        name: payload
+    rationale: >-
+      A log that disagrees with the state it describes is worse than no log at all:
+      consumers rebuild their view from the events, so a disagreement between the two
+      propagates silently and is only discovered when somebody reconciles the log
+      against the contract. Stating the correspondence as an invariant makes it
+      checkable on every successful publish rather than on a hand-picked fixture.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: failed-publish-cannot-mutate
+    title: A rejected publish cannot change the stored payload
+    kind: state_unchanged
+    severity: error
+    summary: When a publish is rejected, the topic it named must keep its previous payload.
+    description: >-
+      Scoped to the failure outcome of `publish`, so it is evaluated only after a
+      call that must be rejected. A contract that overwrites the stored payload and
+      then reports an argument error has, in practice, accepted the write while
+      telling the caller it did not.
+    scope:
+      methods:
+        - publish
+      outcomes:
+        - failure
+    rationale: >-
+      Rejecting an empty payload is only meaningful if the rejection is total. A
+      contract that partially applies the write leaves the log and the state
+      disagreeing in exactly the way this profile exists to detect.
