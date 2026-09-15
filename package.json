@@ -1,6 +1,6 @@
 {
   "name": "@estamora/conformance-spec",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Normative, machine-readable specification layer for Estamora: profiles, vectors, schemas and validation tooling for Soroban contract behavioral conformance.",
   "license": "Apache-2.0",
