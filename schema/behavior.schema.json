@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/behavior.schema.json",
+  "title": "Estamora Behavioral Rules",
+  "description": "Behavioural conformance is the defining feature of Estamora. Interface compatibility alone is insufficient because a contract can expose every expected method with every expected signature and still move the wrong amount, to the wrong account, while emitting an event that says otherwise. A behavioural rule states what must be true before an operation, what must be true after it, which outputs and events are required, and which are forbidden, without embedding executable logic in the profile. Each rule is independent of any concrete input, so a vector can be checked against it.",
+  "type": "object",
+  "required": ["behaviors"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "behaviors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/behaviorRule"
+      }
+    }
+  },
+  "$defs": {
+    "behaviorKind": {
+      "type": "string",
+      "enum": ["success", "failure"],
+      "description": "Whether the rule describes a path that must succeed or a path that must fail. Both kinds are mandatory for a real profile."
+    },
+    "behaviorRule": {
+      "type": "object",
+      "required": [
+        "id",
+        "summary",
+        "method",
+        "kind",
+        "preconditions",
+        "postconditions",
+        "expect_failures",
+        "expect_events",
+        "forbid_events",
+        "invariants"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "method": {
+          "$ref": "profile.schema.json#/$defs/identifier",
+          "description": "Id of the method this rule constrains."
+        },
+        "kind": {
+          "$ref": "#/$defs/behaviorKind"
+        },
+        "preconditions": {
+          "type": "array",
+          "description": "Conditions that must hold in the prepared world before the operation is invoked. Stating them explicitly is what makes a rule checkable: a rule whose preconditions are unstated cannot be distinguished from a rule that was never exercised.",
+          "items": {
+            "$ref": "assertion.schema.json#/$defs/predicate"
+          }
+        },
+        "postconditions": {
+          "type": "array",
+          "description": "Conditions that must hold after the operation. For a failure rule these normally assert that protected state is unchanged.",
+          "items": {
+            "$ref": "assertion.schema.json#/$defs/predicate"
+          }
+        },
+        "expect_failures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `failures.yaml` entries this path must produce. Non-empty for a failure rule, empty for a success rule."
+        },
+        "expect_events": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `events.yaml` entries that must be observed."
+        },
+        "forbid_events": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `events.yaml` entries that must not be observed. Required for failure rules so that a failed operation cannot also emit the success event."
+        },
+        "invariants": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `invariants.yaml` entries that must hold for this path."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "failure"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expect_failures": {
+                "type": "array",
+                "minItems": 1
+              },
+              "expect_events": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "success"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expect_failures": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
