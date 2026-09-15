@@ -1,0 +1,411 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/method.schema.json",
+  "title": "Estamora Method Requirements",
+  "description": "Machine-readable description of the interface a conforming contract must expose. Estamora checks behaviour as well as shape, but a behavioural result is meaningless if the interface it was measured through is ambiguous, so arguments, return values, mutability and authorization participation are all stated explicitly. Type expressions are deliberately language-neutral: a profile author describes a signature structurally rather than writing Rust.",
+  "type": "object",
+  "required": ["methods"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "methods": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Every method this profile makes a statement about. A method absent from this list is not required to exist and is not required to be absent.",
+      "items": {
+        "$ref": "#/$defs/methodDefinition"
+      }
+    }
+  },
+  "$defs": {
+    "primitiveTypeName": {
+      "type": "string",
+      "enum": [
+        "address",
+        "muxed_address",
+        "i128",
+        "u128",
+        "i64",
+        "u64",
+        "i32",
+        "u32",
+        "bool",
+        "symbol",
+        "string",
+        "bytes",
+        "bytes_n",
+        "void",
+        "val",
+        "timepoint",
+        "duration"
+      ],
+      "description": "Closed set of Soroban SDK value types. Closed on purpose: an open list would let a profile name a type the runner cannot map onto a contract spec entry, producing a requirement that can never be checked."
+    },
+    "typeExpr": {
+      "title": "Type expression",
+      "description": "Structural description of a parameter or return type. Composed rather than named, so that generic shapes such as Vec<Address> or Map<Address, i128> are expressible without inventing type names.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "name"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "prim"
+            },
+            "name": {
+              "$ref": "#/$defs/primitiveTypeName"
+            },
+            "width": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 256,
+              "description": "Byte width for `bytes_n`; rejected for every other primitive."
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "name": {
+                    "const": "bytes_n"
+                  }
+                },
+                "required": ["name"]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "width": {
+                    "type": "integer"
+                  }
+                },
+                "required": ["width"]
+              }
+            },
+            {
+              "if": {
+                "not": {
+                  "properties": {
+                    "name": {
+                      "const": "bytes_n"
+                    }
+                  },
+                  "required": ["name"]
+                }
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "width": false
+                },
+                "description": "A fixed byte width is only meaningful for `bytes_n`; accepting it elsewhere would silently describe a type nobody can construct."
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": ["kind", "element"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "vec"
+            },
+            "element": {
+              "$ref": "#/$defs/typeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "some"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "option"
+            },
+            "some": {
+              "$ref": "#/$defs/typeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "key", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "map"
+            },
+            "key": {
+              "$ref": "#/$defs/typeExpr"
+            },
+            "value": {
+              "$ref": "#/$defs/typeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "elements"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "tuple"
+            },
+            "elements": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/typeExpr"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "ok", "err"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "result"
+            },
+            "ok": {
+              "$ref": "#/$defs/typeExpr"
+            },
+            "err": {
+              "$ref": "#/$defs/typeExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "custom"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9_]{1,63}$",
+              "description": "Contract-defined type name, matched against the contract's published spec entries."
+            },
+            "description": {
+              "type": "string",
+              "minLength": 10,
+              "description": "Required so that an unmappable custom type is at least reviewable."
+            }
+          }
+        }
+      ]
+    },
+    "argumentAuthorization": {
+      "type": "object",
+      "description": "Whether a parameter must be covered by the caller's authorization. SEP-41-style interfaces require signatures over the arguments that move value, and a contract that does not ask for them forces wallets to request signatures the contract never checks.",
+      "required": ["required", "semantics"],
+      "additionalProperties": false,
+      "properties": {
+        "required": {
+          "type": "boolean"
+        },
+        "semantics": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        }
+      }
+    },
+    "methodArgument": {
+      "type": "object",
+      "required": ["name", "type", "semantics"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "type": {
+          "$ref": "#/$defs/typeExpr"
+        },
+        "semantics": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000,
+          "description": "What the argument means. Required because a name alone is not a specification: `to` might be a plain address or a muxed address, and the difference changes the required event payload."
+        },
+        "authorization": {
+          "$ref": "#/$defs/argumentAuthorization"
+        }
+      }
+    },
+    "methodReturn": {
+      "type": "object",
+      "required": ["type", "semantics"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/typeExpr"
+        },
+        "semantics": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        }
+      }
+    },
+    "methodDefinition": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "requirement",
+        "summary",
+        "args",
+        "returns",
+        "mutability",
+        "invocation",
+        "authorization",
+        "events",
+        "failures",
+        "behaviors"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "description": "Exported contract function name as it appears in the contract's spec."
+        },
+        "requirement": {
+          "$ref": "profile.schema.json#/$defs/requirementStatus"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "args": {
+          "type": "array",
+          "description": "Positional parameters in declaration order, which is the order the runner passes them in.",
+          "items": {
+            "$ref": "#/$defs/methodArgument"
+          }
+        },
+        "returns": {
+          "$ref": "#/$defs/methodReturn"
+        },
+        "mutability": {
+          "type": "string",
+          "enum": ["readonly", "mutating"],
+          "description": "Whether the method may change contract state. The runner uses this to decide whether a vector may assert an unchanged state."
+        },
+        "invocation": {
+          "type": "string",
+          "enum": ["invoke", "read_only", "simulate"],
+          "description": "How the method is reached. `invoke` submits a transaction-capable call, `read_only` performs a simulation expected to have no side effect, and `simulate` requires simulation even for a mutating method."
+        },
+        "authorization": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `authorization.yaml` rules that govern this method."
+        },
+        "events": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `events.yaml` definitions this method may emit."
+        },
+        "failures": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `failures.yaml` definitions reachable from this method."
+        },
+        "behaviors": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of `behavior.yaml` rules attached to this method."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mutability": {
+                "const": "readonly"
+              }
+            },
+            "required": ["mutability"]
+          },
+          "then": {
+            "properties": {
+              "invocation": {
+                "enum": ["read_only", "simulate"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "requirement": {
+                "const": "forbidden"
+              }
+            },
+            "required": ["requirement"]
+          },
+          "then": {
+            "properties": {
+              "args": {
+                "type": "array",
+                "maxItems": 0,
+                "description": "A method the profile forbids must not also be described as if it had a signature, because a reader could not tell whether the profile requires its absence or merely tolerates it."
+              },
+              "authorization": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "events": {
+                "type": "array",
+                "maxItems": 0
+              },
+              "behaviors": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
