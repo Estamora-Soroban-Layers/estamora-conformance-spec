@@ -94,7 +94,7 @@
         },
         "resource": {
           "$ref": "profile.schema.json#/$defs/identifier",
-          "description": "Resource set the invariant ranges over, e.g. `balances`. Required for `conservation` and `monotonic`, forbidden otherwise."
+          "description": "Resource set the invariant ranges over, e.g. `balances`. Required for `conservation`, `monotonic` and `bounds`, forbidden otherwise. For `bounds` the predicate is evaluated once against each member of the set, addressed by the `resource_member` expression."
         },
         "direction": {
           "type": "string",
@@ -126,7 +126,7 @@
           "if": {
             "properties": {
               "kind": {
-                "enum": ["conservation", "monotonic"]
+                "enum": ["conservation", "monotonic", "bounds"]
               }
             },
             "required": ["kind"]
@@ -146,7 +146,7 @@
             "not": {
               "properties": {
                 "kind": {
-                  "enum": ["conservation", "monotonic"]
+                  "enum": ["conservation", "monotonic", "bounds"]
                 }
               },
               "required": ["kind"]

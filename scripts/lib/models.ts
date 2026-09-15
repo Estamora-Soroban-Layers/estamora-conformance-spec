@@ -109,6 +109,16 @@ export type ValueExpr =
     }
   /** Aggregate over a resource set, e.g. the sum of all balances. */
   | { readonly kind: "sum"; readonly over: string }
+  /** The ledger sequence fixed by the vector fixture. */
+  | { readonly kind: "ledger_sequence" }
+  /** The ledger at which a fixture-declared allowance expires. */
+  | {
+      readonly kind: "allowance_expiry";
+      readonly from: ValueExpr;
+      readonly spender: ValueExpr;
+    }
+  /** The current member of the resource set an invariant ranges over. */
+  | { readonly kind: "resource_member" }
   | { readonly kind: "field"; readonly of: ValueExpr; readonly field: string }
   | {
       readonly kind: "arithmetic";
@@ -485,8 +495,13 @@ export interface VectorDefinition {
   };
   readonly expected: {
     readonly outcome: "success" | "failure";
-    /** Required when `outcome` is `failure`. */
+    /**
+     * Required when `outcome` is `failure`, unless `failure_category` is used
+     * instead, which is the case for profile-independent wildcard vectors.
+     */
     readonly failure: string | undefined;
+    /** Semantic category, used by wildcard vectors that cannot name a profile id. */
+    readonly failure_category: FailureCategory | undefined;
     readonly returns: ValueExpr | undefined;
     readonly state_assertions: readonly StateAssertion[];
     readonly events: {

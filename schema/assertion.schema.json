@@ -120,6 +120,45 @@
         },
         {
           "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "ledger_sequence"
+            }
+          },
+          "description": "The ledger sequence the operation executes in, as fixed by the vector fixture. Expiry-sensitive requirements cannot be stated without it, because a profile must be able to say that an allowance was already expired when the call was made."
+        },
+        {
+          "type": "object",
+          "required": ["kind", "from", "spender"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "allowance_expiry"
+            },
+            "from": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "spender": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          },
+          "description": "The ledger at which an allowance expires, as declared by the vector fixture. Expiry is a property the interface does not expose: once an allowance has expired it is indistinguishable from an allowance that never existed, so the only way to state a requirement about expiry is to name the fixture that created it."
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "resource_member"
+            }
+          },
+          "description": "The current member of the resource set an invariant ranges over. Only meaningful inside an invariant that declares a `resource`, which is what lets a single reusable invariant state a property of every balance rather than of one named account."
+        },
+        {
+          "type": "object",
           "required": ["kind", "op", "operands"],
           "additionalProperties": false,
           "properties": {
