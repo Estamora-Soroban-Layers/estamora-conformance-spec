@@ -1,0 +1,179 @@
+# yaml-language-server: $schema=../../../schema/failure.schema.json
+failures:
+  - id: insufficient-balance
+    category: insufficient_balance
+    summary: The operation moves more than the source account holds.
+    methods: [transfer, transfer-from, burn, burn-from]
+    trigger: The operation's amount argument is greater than the current balance of the account being debited.
+    description: >-
+      The most common negative case in any token. It matters as a distinct
+      requirement because a contract that clamps the amount, saturates at zero, or
+      completes a partial transfer would otherwise pass every positive test while
+      losing value for its users.
+    expected:
+      outcome: failure
+      signal: trap
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      Soroban contracts signal failure by trapping and SEP-0041 defines no error
+      codes, so requiring a particular payload would reject conforming
+      implementations. The requirement that matters is that the call fails, that
+      it leaves no state change, and that it emits no success event; the reason is
+      carried by the semantic category instead of by an error string.
+    references:
+      - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+
+  - id: insufficient-allowance
+    category: insufficient_allowance
+    summary: The spender's remaining allowance is smaller than the requested amount.
+    methods: [transfer-from, burn-from]
+    trigger: The operation's amount argument is greater than the current allowance that the spender holds over the account being debited.
+    description: >-
+      Distinct from insufficient balance because the two limits are enforced
+      independently and a contract can get one right while getting the other
+      wrong. The signal is `either` because a contract may legitimately fail
+      inside the host when the allowance entry has already expired and been
+      removed, which surfaces as a host error rather than as the contract's own
+      check.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      An allowance is the holder's explicit limit on a third party. Treating an
+      over-allowance request as a partial success, or as a success bounded by the
+      balance, removes the only constraint the holder asked for.
+
+  - id: missing-authorization
+    category: missing_authorization
+    summary: The call requires authorization that was not supplied.
+    methods: [transfer, transfer-from, approve, burn, burn-from]
+    trigger: A value-moving method is invoked without a valid authorization from the principal it requires, as declared in the authorization rules.
+    description: >-
+      The failure that stands between a correct contract and one anybody can
+      drain. It is stated separately from the wrong-actor case because the two
+      exercise different code paths: one checks that a signature exists, the other
+      checks that it belongs to the right principal.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      The signal is `either` because the host refuses an invocation whose
+      authorization payload is absent before the contract's own body runs, which
+      is a host error rather than a contract trap. Both routes are correct
+      behaviour, and a profile that demanded one would reject conforming
+      contracts that rely on the host's own enforcement.
+
+  - id: wrong-actor
+    category: wrong_actor
+    summary: A different principal authorized the call than the one the rule requires.
+    methods: [transfer, transfer-from, approve, burn, burn-from]
+    trigger: A value-moving method is invoked with a valid authorization supplied by an account other than the principal the rule names.
+    description: >-
+      The substitution case. A contract that checks only that some signature is
+      present, without checking whose it is, accepts an attacker's own signature
+      as authority over a victim's balance.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      Testing this separately from a missing signature is the difference between
+      checking that authorization happens and checking that it is correct. The two
+      are frequently conflated, and a contract that confuses them passes a naive
+      negative test while being fully exploitable.
+
+  - id: invalid-amount
+    category: invalid_amount
+    summary: The amount argument cannot describe a valid token quantity.
+    methods: [transfer, transfer-from, approve, burn, burn-from]
+    trigger: The operation's amount argument is negative, so applying it would move an account into an impossible state.
+    description: >-
+      A negative amount inverts the direction of a movement. In a transfer it
+      would credit the sender and debit the recipient; in an approval it would
+      create a negative allowance that inverts every later comparison.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      SEP-0041 does not describe a dedicated negative-amount check, and the Stellar
+      developer documentation covers the same ground by stating that an action
+      producing an invalid state must trap. This profile therefore accepts either
+      a direct check or a failure produced by the resulting invalid state, rather
+      than inventing a requirement about which code path must run.
+    references:
+      - https://developers.stellar.org/docs/tokens/token-interface
+
+  - id: invalid-live-until-ledger
+    category: invalid_argument
+    summary: An approval expires before the ledger it is created in.
+    methods: [approve]
+    trigger: The live_until_ledger argument is less than the current ledger sequence while the amount argument is non-zero.
+    description: >-
+      SEP-0041 states that the expiry cannot be less than the current ledger
+      number unless the amount is being set to zero. Setting a zero amount is
+      explicitly the revocation path, so it remains legal at any expiry.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      An allowance that is already expired when it is created is a grant that
+      never took effect while still appearing in the history as an approval. A
+      client that silently accepts it leaves the user believing a spender has
+      authority the contract will never honour.
+    references:
+      - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+
+  - id: uninitialized-metadata
+    category: uninitialized
+    summary: Token metadata is read before the contract has been initialized.
+    methods: [decimals, name, symbol]
+    trigger: One of the descriptive metadata methods is invoked on a contract whose metadata has not been set.
+    description: >-
+      Recorded as a failure for completeness rather than as a requirement that a
+      contract must fail. A contract that returns a default value instead is not
+      asserted to be non-conformant, but a contract that fails here must fail
+      cleanly rather than returning a partially written value.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: reverted
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      The Stellar developer documentation for the token interface states that
+      decimals, name and symbol panic when the contract has not yet been
+      initialized. The requirement is recorded so the case is covered explicitly
+      and so that a profile consumer knows the profile has considered it, rather
+      than leaving it as an unexamined gap.
+    references:
+      - https://developers.stellar.org/docs/tokens/token-interface
