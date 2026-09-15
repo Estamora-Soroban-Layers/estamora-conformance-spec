@@ -1,0 +1,126 @@
+# The configuration for the published documentation site.
+#
+# A specification repository whose documents are only readable after cloning is a
+# specification nobody reads. This builds the reference set into a browsable site, and --
+# more importantly than the prose -- it publishes `schema/` and `profiles/` beside it, so
+# the canonical `$id` of every schema is a URL that resolves. Those two directories are
+# copied into the build by `scripts/build-docs-site.sh`, which is the entry point CI and a
+# contributor both use.
+
+site_name: Estamora conformance specification
+site_description: >-
+  Machine-readable definitions of what it means for a Soroban smart contract to behave
+  according to the standard or interface profile it claims to implement.
+site_url: https://estamora-soroban-layers.github.io/estamora-conformance-spec/
+
+repo_url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+repo_name: Estamora-Soroban-Layers/estamora-conformance-spec
+edit_uri: edit/main/docs/
+
+docs_dir: docs
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+  palette:
+    # The two palettes are the same document read in different light, which is why the
+    # toggle is offered rather than one being chosen for the reader.
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        # The diagrams in the READMEs and the model documents are mermaid. Rendering
+        # them as code blocks would publish a picture of a diagram to the site whose
+        # whole purpose is to explain the model.
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+
+# `links.not_found` is off, and that is a deliberate trade rather than convenience.
+#
+# The documents link to `../schema/*.json`, `../profiles/`, `../VERSIONING.md` and the other
+# files that live at the repository root. Those links are correct: on GitHub they resolve
+# against the file's own location, and on the published site they resolve because
+# `scripts/build-docs-site.sh` copies exactly those paths beside the rendered pages. MkDocs
+# validates them against `docs_dir` alone, where the targets are by definition absent, so
+# every correct link in the repository would be reported as broken.
+#
+# What is lost is MkDocs noticing a *genuinely* missing target. That check is not dropped,
+# it is moved to where it can see the whole repository: `scripts/check-doc-links.py` resolves
+# every relative link against the file that contains it and fails the build on one that does
+# not exist. It runs in `build-docs-site.sh`, so the site cannot be built from a tree with a
+# broken link in it.
+validation:
+  nav:
+    omitted_files: ignore
+  links:
+    not_found: ignore
+    absolute_links: ignore
+    unrecognized_links: ignore
+    anchors: warn
+
+strict: true
+
+nav:
+  - Home: index.md
+  - Introduction: introduction.md
+  - Model:
+      - Architecture: architecture.md
+      - Terminology: terminology.md
+      - Behavioural model: behavioral-model.md
+      - Authorization model: authorization-model.md
+      - Event model: event-model.md
+      - State model: state-model.md
+      - Invariant model: invariant-model.md
+      - Failure model: failure-model.md
+      - Vector model: vector-model.md
+  - Authoring:
+      - Authoring a profile: profile-authoring.md
+  - Versions and governance:
+      - Versioning: versioning.md
+      - Compatibility: compatibility.md
+      - Governance: governance.md
+      - Certification: certification.md
+  - Reference:
+      - Profiles: generated/profile-index.md
+      - Vectors: generated/vector-index.md
+      - Schemas: schemas.md
+  - Security: security.md
+  - FAQ: faq.md

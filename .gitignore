@@ -14,6 +14,11 @@ tests/.tmp*/
 # Generated documentation is committed, but its scratch output is not
 .docs-tmp/
 
+# The rendered documentation site. Built by `scripts/build-docs-site.sh` and published
+# by `.github/workflows/pages.yml`. Never committed: it is derived entirely from
+# `docs/`, `schema/` and `profiles/`, all of which are.
+site/
+
 # Editor and OS noise
 .DS_Store
 .idea/

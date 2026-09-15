@@ -1,0 +1,6 @@
+# Python dependencies for the documentation site.
+#
+# Pinned, and pinned to the version used by CI, because the site is published from a build:
+# an unpinned theme would let the published page change without a commit to this repository,
+# which is the same drift the JavaScript dependencies are pinned against.
+mkdocs-material==9.6.20
