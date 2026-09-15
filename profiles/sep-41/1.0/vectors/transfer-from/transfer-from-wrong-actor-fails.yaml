@@ -1,0 +1,116 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: transfer-from-wrong-actor-fails
+profile: sep-41
+profile_version: "1.0"
+title: A transfer_from signed by the holder instead of the spender must be refused
+description: >-
+  Alice holds 1000 and has approved Carol for 600. Alice, not Carol, signs the
+  call. The signature is valid and belongs to the account being debited, so an
+  implementation that checks only that the affected holder authorized the movement
+  would accept it. SEP-0041 requires the spender to authorize instead, and this
+  vector is the one that distinguishes the two readings, because the balances
+  involved are identical either way and no state assertion can tell them apart.
+kind: authorization
+method: transfer-from
+tags: [transfer-from, authorization, wrong-actor, negative]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose signature is valid but is not the required principal.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The intended recipient, who must receive nothing.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender whose authorization the rule requires instead.
+  balances:
+    alice: "1000"
+    bob: "0"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "600"
+      live_until_ledger: 5000
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  spender:
+    kind: actor
+    ref: carol
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: rejected
+  substituted_for: [carol]
+
+expected:
+  outcome: failure
+  failure: wrong-actor
+  state_assertions:
+    - id: holder-balance-untouched
+      description: A substituted signature must not move the holder's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: allowance-untouched
+      description: A substituted signature must not consume the allowance.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+  events:
+    required: []
+    forbidden: [transfer, approve, burn]
+  invariants: [unauthorized-operation-does-not-mutate-state]
+
+assertions: []
+
+rationale: >-
+  The distinction between transfer and transfer_from is entirely about which
+  principal must authorize: the holder owns the value being moved, but only the
+  spender has been granted the right to move it. Accepting the holder's signature
+  collapses that distinction, so the method becomes a transfer that also happens to
+  consume a third party's allowance. No balance assertion can detect this, which is
+  why authorization is modelled as its own dimension with its own expected
+  failure.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
