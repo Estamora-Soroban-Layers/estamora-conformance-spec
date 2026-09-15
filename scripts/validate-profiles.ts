@@ -31,11 +31,13 @@ import {
   COMMON_FLAGS,
   DiagnosticBag,
   ErrorCode,
+  EXAMPLES_DIR,
   EXIT_CODES,
   discoverProfileDirectories,
   findMalformedVersionDirectories,
   formatIdentity,
   getSchemaRegistry,
+  handleCliError,
   loadProfileBundle,
   loadVectors,
   note,
@@ -43,6 +45,7 @@ import {
   prettyJson,
   PROFILES_DIR,
   readdirSyncSafe,
+  readYamlFile,
   reportSummary,
   REPO_ROOT,
   stringFlag,
@@ -52,9 +55,29 @@ import {
   WILDCARD_PROFILE,
   type LoadedVector,
   type ProfileBundle,
+  type SchemaFileName,
 } from "./lib/index.ts";
 
 const PROGRAM = "estamora-validate-profiles";
+
+/**
+ * Schemas an example document may demonstrate.
+ *
+ * The report schema is excluded because a report is emitted by the runner rather
+ * than authored, so an example of one would be a fixture rather than a model for
+ * contributors to copy. Every other document type a profile author writes is here.
+ */
+const EXAMPLE_DOCUMENT_SCHEMAS: readonly SchemaFileName[] = [
+  "profile.schema.json",
+  "method.schema.json",
+  "authorization.schema.json",
+  "event.schema.json",
+  "behavior.schema.json",
+  "invariant.schema.json",
+  "failure.schema.json",
+  "vector.schema.json",
+  "assertion.schema.json",
+];
 
 /** The referenceable identities a profile declares, unioned across versions. */
 interface ProfileIdIndex {
@@ -129,6 +152,7 @@ function main(argv: readonly string[]): number {
   }
 
   validateSharedVectorSets(registry, bag, vectorIds, profileIndex);
+  validateExamples(registry, bag);
 
   if (directories.length > 0) {
     note(`${tally(passed, checked)} profile bundle(s) passed every cross-reference check`);
@@ -212,6 +236,97 @@ function validateBundle(
   }
 
   return bag.count("error") === before;
+}
+
+/**
+ * Validate the standalone example documents.
+ *
+ * An example is a single file with no bundle around it, so there is no manifest to
+ * say which document type it demonstrates. Rather than keying off the filename,
+ * which would let a rename silently change what is being checked, each example is
+ * offered to every document schema and must satisfy exactly one. That also makes
+ * the examples a live test of schema disjointness: if two document types ever
+ * became mutually satisfiable, an example would validate against both and this
+ * check would say so instead of quietly picking the first match.
+ */
+function validateExamples(
+  registry: ReturnType<typeof getSchemaRegistry>,
+  bag: DiagnosticBag,
+): void {
+  if (!existsSync(EXAMPLES_DIR)) {
+    bag.error(ErrorCode.IO_ERROR, "The examples directory is missing.", EXAMPLES_DIR);
+    return;
+  }
+
+  const files = readdirSyncSafe(EXAMPLES_DIR).filter(
+    (entry) => entry.endsWith(".yaml") || entry.endsWith(".yml"),
+  );
+  if (files.length === 0) {
+    bag.warn(
+      ErrorCode.IO_ERROR,
+      "The examples directory contains no documents, so no example is verified to validate.",
+      EXAMPLES_DIR,
+    );
+    return;
+  }
+
+  for (const entry of files) {
+    const path = join(EXAMPLES_DIR, entry);
+    let document: unknown;
+    try {
+      document = readYamlFile(path);
+    } catch (cause) {
+      bag.error(
+        ErrorCode.PARSE_ERROR,
+        cause instanceof Error ? cause.message : String(cause),
+        path,
+      );
+      continue;
+    }
+
+    const matches = EXAMPLE_DOCUMENT_SCHEMAS.filter(
+      (schema) => registry.validate(schema, document, path).valid,
+    );
+
+    if (matches.length === 0) {
+      const detailed = registry.validate("profile.schema.json", document, path);
+      bag.error(
+        ErrorCode.PROFILE_ERROR,
+        `Example matches no Estamora document schema. It neither satisfies the profile schema nor any of the collection schemas, so a reader copying it would start from an invalid document. First profile-schema error: ${detailed.errors[0]?.message ?? "none reported"}`,
+        path,
+      );
+      continue;
+    }
+    if (matches.length > 1) {
+      bag.error(
+        ErrorCode.SCHEMA_ERROR,
+        `Example validates against ${matches.length} document schemas (${matches.join(", ")}), which means the schemas are not disjoint and a consumer cannot tell which document type this file is.`,
+        path,
+      );
+      continue;
+    }
+
+    if (matches[0] === "profile.schema.json") {
+      const metadata = readMember<{ id?: unknown; version?: unknown }>(document, "profile");
+      if (metadata !== undefined) {
+        note(
+          `example ${entry} is a profile document for ${String(metadata.id)}@${String(metadata.version)}`,
+        );
+      }
+    }
+  }
+}
+
+/** Read a named object member from a parsed document. */
+function readMember<T>(document: unknown, key: string): T | undefined {
+  if (typeof document !== "object" || document === null || Array.isArray(document)) {
+    return undefined;
+  }
+  const member = (document as Record<string, unknown>)[key];
+  if (typeof member !== "object" || member === null || Array.isArray(member)) {
+    return undefined;
+  }
+  return member as T;
 }
 
 /**
@@ -824,4 +939,13 @@ function collectYaml(directory: string): readonly string[] {
   return files.sort();
 }
 
-process.exitCode = main(process.argv.slice(2));
+try {
+  process.exitCode = main(process.argv.slice(2));
+} catch (error) {
+  handleCliError(
+    PROGRAM,
+    "Validate every Estamora conformance profile bundle.",
+    COMMON_FLAGS,
+    error,
+  );
+}
