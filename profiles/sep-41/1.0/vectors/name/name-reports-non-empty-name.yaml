@@ -1,0 +1,77 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: name-reports-non-empty-name
+profile: sep-41
+profile_version: "1.0"
+title: The token name is reported as a non-empty string and reading it changes nothing
+description: >-
+  SEP-0041 requires a descriptive name but does not fix its value, so asserting a
+  specific string here would be inventing a requirement the specification does not
+  make. The vector therefore asserts what the specification does support: the call
+  succeeds, the returned value is not the empty string, no value event is emitted,
+  and the balances are untouched. The read is stated as an explicit assertion so
+  that a contract returning an empty name is still caught.
+kind: positive
+method: name
+tags: [name, metadata, positive]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: A funded account, so the state assertions have something to observe.
+  balances:
+    alice: "1000"
+  allowances: []
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs: {}
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: name-read-preserves-balances
+      description: Reading the name must not change the sum of balances.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: unchanged
+        target:
+          kind: sum
+          over: balances
+  events:
+    required: []
+    forbidden: [transfer, approve, burn, mint, clawback]
+  invariants: []
+
+assertions:
+  - id: name-is-not-empty
+    category: behavior
+    description: The reported name must not be the empty string.
+    predicate:
+      kind: not_equal
+      left:
+        kind: read
+        method: name
+        args: []
+      right:
+        kind: literal
+        value: ""
+
+rationale: >-
+  An empty name is the failure mode that matters for descriptive metadata: a
+  client rendering a token list would show a blank row, and the contract would
+  still appear to satisfy the interface. Asserting non-emptiness catches that
+  without claiming to know what the name should be, which the specification leaves
+  to the implementation.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface
