@@ -1,0 +1,108 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: burn-from-beyond-allowance-fails
+profile: sep-41
+profile_version: "1.0"
+title: A burn_from above the allowance must fail and preserve both values
+description: >-
+  Alice approved Carol for 50 and holds 1000. Carol attempts to burn 200. The call
+  must fail, Alice's balance must be unchanged and the allowance must be exactly
+  as it was. Both assertions are recorded because a contract can legitimately pass
+  the balance check while having already decremented the allowance before it
+  discovered the amount was too large, which silently erodes the grant.
+kind: state
+method: burn-from
+tags: [burn-from, negative, state, allowance]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance must not be reduced.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender attempting to exceed the granted allowance.
+  balances:
+    alice: "1000"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "50"
+      live_until_ledger: 5000
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  spender:
+    kind: actor
+    ref: carol
+  from:
+    kind: actor
+    ref: alice
+  amount:
+    kind: literal
+    value: "200"
+
+authorization:
+  actors: [carol]
+  expected: accepted
+
+expected:
+  outcome: failure
+  failure: insufficient-allowance
+  state_assertions:
+    - id: holder-balance-preserved
+      description: A rejected burn_from must not reduce the holder's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: allowance-preserved
+      description: A rejected burn_from must not consume any part of the allowance.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "50"
+  events:
+    required: []
+    forbidden: [burn, transfer, approve, clawback]
+  invariants:
+    - failed-operation-does-not-mutate-state
+    - allowance-non-increasing-without-approve
+
+assertions: []
+
+rationale: >-
+  The spender's authority to destroy tokens is bounded by the allowance in
+  exactly the same way as their authority to move them. Checking the balance as
+  well as the allowance matters because the two limits are independent: a holder
+  may have plenty of tokens and still have granted almost nothing.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
