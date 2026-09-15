@@ -1,0 +1,125 @@
+# yaml-language-server: $schema=../../../schema/profile.schema.json
+estamora_spec_version: "1.0"
+
+profile:
+  id: sep-41
+  version: "1.0"
+  title: Soroban Token Interface
+  status: draft
+  summary: Behavioural requirements for the SEP-41 fungible token interface on Soroban.
+  description: >-
+    SEP-41 defines the token interface every Soroban token should expose so that
+    contracts, wallets and indexers can handle tokens generically. This profile
+    encodes that interface as checkable requirements. It goes beyond the shape of
+    the interface: it states which principal must authorize each value-moving
+    call, which arguments their authorization must cover, which events must be
+    emitted and what those events must say, what a failed call must leave behind,
+    and which properties must survive across calls. A contract that merely
+    exposes the ten expected methods with the expected signatures can still fail
+    every one of those requirements, which is exactly the gap this profile exists
+    to close.
+
+  license: Apache-2.0
+
+  specification:
+    name: SEP-0041
+    title: Soroban Token Interface
+    version: "0.5.1"
+    status: draft
+    url: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+    updated: "2026-08-03"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        All ten methods of the upstream `TokenInterface` trait are modelled as
+        required: allowance, approve, balance, transfer, transfer_from, burn,
+        burn_from, decimals, name and symbol. No method of the trait is omitted.
+      - >-
+        Mint and clawback are modelled as events only. SEP-0041 deliberately does
+        not add `mint()`, `clawback()` or `init_asset()` to the interface, so no
+        method requirement is attached to them. Their events are declared as
+        optional, because a token that never mints or claws back never emits them.
+      - >-
+        SEP-0041 exposes no total-supply accessor, so supply conservation cannot
+        be read directly. Conservation requirements are therefore expressed over
+        the observable balance set instead, which is stronger in practice because
+        it is measurable through the interface the profile describes.
+      - >-
+        The Stellar Asset Contract emits the same event names with an additional
+        trailing SEP-11 asset topic. That shape belongs to CAP-67, not to SEP-0041,
+        and is deliberately out of scope for this profile. A SAC is therefore not
+        expected to be certified against this profile without a separate profile
+        that models the extra topic explicitly.
+      - >-
+        SEP-0041 signals failure by trapping and does not define error codes, so
+        failure requirements here are semantic. A contract is not expected to
+        return any particular payload.
+      - >-
+        SEP-0041 states that a mint action emitting a mint event must increase
+        total supply, and that a clawback event must decrease it. That
+        requirement is documented here rather than encoded as an enforceable
+        rule, because SEP-0041 defines no total-supply accessor and no mint or
+        clawback function, so neither the supply nor a method scope for the
+        invariant can be observed through this interface. Encoding it would have
+        meant inventing an accessor the specification does not define.
+      - >-
+        The requirement that `decimals`, `name` and `symbol` panic when the
+        contract has not been initialized comes from the Stellar developer
+        documentation for the token interface rather than from the SEP text
+        itself, and is recorded as such in the provenance block.
+
+  provenance:
+    source: upstream-specification
+    derived_from: stellar-protocol@master ecosystem/sep-0041.md v0.5.1 (updated 2026-08-03)
+    interpretation_notes:
+      - >-
+        The trait declares `transfer` as taking `MuxedAddress` for its `to`
+        argument while `transfer_from` takes a plain `Address`. Both are modelled
+        exactly as declared, because the distinction changes which event payload
+        a conforming contract must emit.
+      - >-
+        SEP-0041 states that an expired allowance, where `live_until_ledger` is
+        less than the current ledger, should be treated as a zero allowance. This
+        profile reads that as a behavioural requirement on reads and as a reason
+        for `transfer_from` and `burn_from` to fail once the allowance has
+        expired, and encodes both.
+      - >-
+        SEP-0041 states that an allowance is a spending limit rather than a
+        reservation, and that `approve` overwrites the current allowance instead
+        of adding to it. Both are encoded as behavioural rules, including the
+        consequence that an allowance may exceed the holder's balance without
+        that being an error.
+      - >-
+        SEP-0041 permits two data encodings for several events, a single-value
+        form and a map form with symbol keys. This profile accepts both rather
+        than choosing one, and requires the map form to be used consistently
+        within a single event.
+      - >-
+        The upstream document does not state whether a negative amount must be
+        rejected by a dedicated check or by the resulting invalid state. This
+        profile treats a negative amount as an invalid amount and accepts either
+        signalling route, because both trap and the interface defines no error
+        codes.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - transfer
+    - transfer-from
+    - approve
+    - allowance
+    - balance
+    - decimals
+  shared_vectors:
+    - common
+    - sep-41
