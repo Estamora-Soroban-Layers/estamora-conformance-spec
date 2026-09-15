@@ -11,12 +11,18 @@ is inherited by every profile that lists `common` in `includes.shared_vectors`.
 | `allowance-expired-reads-as-zero` | `sep-41@1.0` | boundary | `allowance` | `profiles/sep-41/1.0/vectors/allowance/allowance-expired-reads-as-zero.yaml` |
 | `approve-grants-allowance` | `sep-41@1.0` | positive | `approve` | `vectors/sep-41/approve/approve-grants-allowance.yaml` |
 | `approve-overwrites-allowance` | `sep-41@1.0` | positive | `approve` | `profiles/sep-41/1.0/vectors/approve/approve-overwrites-allowance.yaml` |
+| `authorized-spend-debits-owner` | `authorization-sensitive@0.1` | authorization | `spend` | `profiles/examples/authorization-sensitive/vectors/spend/authorized-spend-debits-owner.yaml` |
 | `balance-of-unknown-address-is-zero` | `sep-41@1.0` | boundary | `balance` | `profiles/sep-41/1.0/vectors/balance/balance-of-unknown-address-is-zero.yaml` |
 | `burn-from-beyond-allowance-fails` | `sep-41@1.0` | state | `burn-from` | `profiles/sep-41/1.0/vectors/burn-from/burn-from-beyond-allowance-fails.yaml` |
 | `burn-reduces-holder-balance` | `sep-41@1.0` | invariant | `burn` | `profiles/sep-41/1.0/vectors/burn/burn-reduces-holder-balance.yaml` |
 | `decimals-reports-configured-precision` | `sep-41@1.0` | positive | `decimals` | `profiles/sep-41/1.0/vectors/decimals/decimals-reports-configured-precision.yaml` |
+| `deposit-credits-balance` | `minimal-token@0.1` | positive | `deposit` | `profiles/examples/minimal-token/vectors/deposit/deposit-credits-balance.yaml` |
+| `deposit-without-authorization-fails` | `minimal-token@0.1` | negative | `deposit` | `profiles/examples/minimal-token/vectors/deposit/deposit-without-authorization-fails.yaml` |
 | `funded-balance-is-reported` | `sep-41@1.0` | positive | `balance` | `vectors/sep-41/balance/funded-balance-is-reported.yaml` |
 | `name-reports-non-empty-name` | `sep-41@1.0` | positive | `name` | `profiles/sep-41/1.0/vectors/name/name-reports-non-empty-name.yaml` |
+| `publish-emits-exactly-one-message` | `event-sensitive@0.1` | event | `publish` | `profiles/examples/event-sensitive/vectors/publish/publish-emits-exactly-one-message.yaml` |
+| `publish-with-empty-payload-fails` | `event-sensitive@0.1` | negative | `publish` | `profiles/examples/event-sensitive/vectors/publish/publish-with-empty-payload-fails.yaml` |
+| `spend-without-owner-signature-fails` | `authorization-sensitive@0.1` | negative | `spend` | `profiles/examples/authorization-sensitive/vectors/spend/spend-without-owner-signature-fails.yaml` |
 | `symbol-reports-non-empty-symbol` | `sep-41@1.0` | positive | `symbol` | `profiles/sep-41/1.0/vectors/symbol/symbol-reports-non-empty-symbol.yaml` |
 | `transfer-authorized-by-wrong-actor-fails` | `sep-41@1.0` | authorization | `transfer` | `vectors/sep-41/transfer/transfer-authorized-by-wrong-actor-fails.yaml` |
 | `transfer-beyond-balance-fails` | `*@1.0` | negative | `transfer` | `vectors/common/failures/transfer-beyond-balance-fails.yaml` |
@@ -29,4 +35,4 @@ is inherited by every profile that lists `common` in `includes.shared_vectors`.
 | `unknown-account-balance-is-zero` | `*@1.0` | boundary | `balance` | `vectors/common/addresses/unknown-account-balance-is-zero.yaml` |
 | `zero-amount-transfer-succeeds` | `*@1.0` | boundary | `transfer` | `vectors/common/amounts/zero-amount-transfer-succeeds.yaml` |
 
-Total: 20 vector(s).
+Total: 26 vector(s).

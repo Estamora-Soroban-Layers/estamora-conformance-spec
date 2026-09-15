@@ -9,6 +9,9 @@ contract, never by reading this table.
 
 | Profile | Status | Upstream | Methods | Auth rules | Events | Behaviours | Invariants | Failures | Vectors |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| `authorization-sensitive@0.1` | experimental | [EXAMPLE-0003 v0.1](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec) (draft) | 2 | 2 | 1 | 3 | 2 | 3 | 2 |
+| `event-sensitive@0.1` | experimental | [EXAMPLE-0004 v0.1](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec) (draft) | 2 | 2 | 2 | 3 | 2 | 1 | 2 |
+| `minimal-token@0.1` | experimental | [EXAMPLE-0002 v0.1](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec) (draft) | 2 | 2 | 1 | 3 | 2 | 3 | 2 |
 | `sep-41@1.0` | draft | [SEP-0041 v0.5.1](https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md) (draft) | 10 | 6 | 5 | 15 | 7 | 7 | 12 |
 
 ## Vector corpus digests
@@ -21,4 +24,7 @@ the contribution of any other.
 
 | Profile | Corpus digest |
 | --- | --- |
+| `authorization-sensitive@0.1` | `sha256:a4ae34ae7676facdc07cba54c84357fc6243e2f214aaacd032e7b4396bf7902d` |
+| `event-sensitive@0.1` | `sha256:5c15fc166f07dfa0eb2c7adc205a1e41009554ea118f37bdeb25fc29bf68b4d4` |
+| `minimal-token@0.1` | `sha256:ba45982e1334c73f3e6355eb83138cd38d21307b14d28eee069716161df77400` |
 | `sep-41@1.0` | `sha256:3cf5df895f79ae214e3e2f5852b8ce81462c2fd8a1f143bb270d724c366b71ea` |
