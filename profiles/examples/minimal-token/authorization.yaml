@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=../../../schema/authorization.schema.json
+authorization_rules:
+  - id: depositor-authorizes-deposit
+    summary: A deposit must be authorized by the account named in `from`.
+    description: >-
+      The rule distinguishes three outcomes rather than one. An authorized caller
+      succeeds; a caller who supplies no authorization at all is rejected as
+      missing authorization; a caller who supplies valid authorization belonging
+      to a different account is rejected as a wrong actor. Collapsing the last two
+      into "the call failed" would hide the case where a contract checks that
+      *some* signature is present without checking whose it is.
+    methods:
+      - deposit
+    actor:
+      kind: argument
+      argument: from
+      on_behalf_of: false
+    coverage:
+      mode: exact
+      arguments:
+        - from
+    unauthorized:
+      kind: fail
+      failure: missing-deposit-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-deposit-actor
+    replay_sensitive: false
+    notes:
+      - >-
+        `on_behalf_of` is false because the depositing account is also the account
+        whose balance changes. A delegated deposit would set it true and would need
+        its own rule naming both principals.
+      - >-
+        Coverage is `exact` over `from` alone. `amount` is deliberately outside the
+        authorization envelope: a holder who authorized a deposit authorizes the
+        amount the contract credits, and requiring the amount to be signed would
+        make every deposit unrevocable in amount but not in time, which is not the
+        property this interface claims.
+      - >-
+        The rule is not replay sensitive. A deposit is additive, so repeating an
+        already-observed invocation credits the amount again rather than being
+        rejected as a replay; that is a property of the interface, and a profile
+        that claimed otherwise would be wrong about every conforming contract.
+
+  - id: balance-requires-no-authorization
+    summary: Reading a balance must be possible without any authorization.
+    description: >-
+      The rule exists so that the absence of an authorization requirement is a
+      stated decision rather than an omission. A contract that demands
+      authorization to read a balance fails this rule, and that failure is
+      distinguishable from a contract that merely forgot to declare anything.
+    methods:
+      - balance
+    actor:
+      kind: none
+    coverage:
+      # `at_most` with an empty argument set is the correct encoding of "the
+      # contract must not demand authorization over any argument". `exact` is
+      # reserved for a rule that names the arguments its actor must cover, and
+      # the schema rejects an empty `exact` set on purpose.
+      mode: at_most
+      arguments: []
+    unauthorized:
+      kind: succeed
+    wrong_actor:
+      kind: succeed
+    replay_sensitive: false
+    notes:
+      - >-
+        `wrong_actor` is `succeed` because the rule has no actor to get wrong:
+        with no authorization in play there is no principal whose signature could
+        belong to another account.
+      - >-
+        A read is not replay sensitive either. Repeating a query changes nothing,
+        so there is no state a replay could exploit.

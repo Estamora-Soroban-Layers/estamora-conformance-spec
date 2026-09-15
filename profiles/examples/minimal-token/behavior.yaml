@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=../../../schema/behavior.schema.json
+behaviors:
+  - id: deposit-credits-balance
+    summary: A successful deposit raises the depositor's balance by exactly the requested amount.
+    description: >-
+      The rule is stated as a delta against the balance read through the interface
+      rather than as an absolute value, so it holds for every starting balance. A
+      contract that credits a rounded amount, credits a fee-adjusted amount, or
+      credits the recipient of a different call passes every "the call succeeded"
+      check while losing value for its users.
+    method: deposit
+    kind: success
+    preconditions:
+      - kind: greater_than
+        left:
+          kind: input
+          name: amount
+        right:
+          kind: literal
+          value: "0"
+    postconditions:
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        direction: increase
+        by:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events:
+      - deposit
+    forbid_events: []
+    invariants:
+      - balances-are-non-negative
+    notes:
+      - >-
+        The precondition is expressed over the argument rather than assumed, so a
+        zero or negative amount is excluded from the rule instead of making it
+        silently untrue.
+
+  - id: deposit-without-authorization-fails
+    summary: A deposit that the depositing account has not authorized must fail and leave state untouched.
+    description: >-
+      Both rejection routes are covered by one rule because they must be
+      indistinguishable in their *effect*: whether authorization is absent or
+      merely belongs to the wrong principal, no balance may move and no deposit
+      event may be emitted. The distinction between the two is preserved in the
+      failure requirements, where it belongs.
+    method: deposit
+    kind: failure
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+    expect_failures:
+      - missing-deposit-authorization
+      - wrong-deposit-actor
+    expect_events: []
+    forbid_events:
+      - deposit
+    invariants:
+      - failed-deposit-cannot-mutate
+    notes:
+      - >-
+        Forbidding the event is as important as requiring unchanged state. A
+        contract that emits the deposit event before performing the authorization
+        check leaves consumers with a credit that never happened.
+
+  - id: balance-of-any-address-is-non-negative
+    summary: A balance read returns a non-negative quantity for any valid address.
+    description: >-
+      An address that has never deposited must report zero rather than trapping,
+      and no address may report a negative balance. Stating the bound over the
+      read makes the requirement observable without knowing the fixture.
+    method: balance
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: owner
+        right:
+          kind: literal
+          value: "0"
+    expect_failures: []
+    expect_events: []
+    forbid_events: []
+    invariants:
+      - balances-are-non-negative

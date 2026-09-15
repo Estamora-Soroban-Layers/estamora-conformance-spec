@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=../../../schema/profile.schema.json
+#
+# A complete, minimal profile bundle.
+#
+# This example exists to show what a *whole* profile looks like rather than what
+# one document looks like: two methods, one authorization rule, one event, three
+# behavioural rules, two invariants, three semantic failures and two vectors. It
+# is deliberately small enough to read in one sitting, and it validates.
+#
+# It is an example, not a standard. The interface is invented for illustration,
+# which the provenance block states rather than leaving a reader to assume.
+estamora_spec_version: "1.0"
+
+profile:
+  id: minimal-token
+  version: "0.1"
+  title: Minimal Deposit Token
+  status: experimental
+  summary: A two-method deposit interface, used to illustrate a complete Estamora profile bundle.
+  description: >-
+    The interface has one mutating method, `deposit`, and one read-only method,
+    `balance`. Both are required. The bundle states who must authorize a deposit,
+    which arguments that authorization must cover, what a successful deposit must
+    do to the depositor's balance, what a rejected deposit must leave behind, the
+    event a successful deposit must emit and what that event must say, and the
+    invariants that must survive either outcome.
+
+    Nothing here is drawn from an upstream specification. It is the shape of a
+    profile, demonstrated end to end, and the provenance block records that so the
+    example cannot be mistaken for a ratified standard.
+
+  license: Apache-2.0
+
+  specification:
+    name: EXAMPLE-0002
+    title: Minimal Deposit Token
+    version: "0.1"
+    status: draft
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+    updated: "2026-09-15"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        Both methods of the interface are modelled as required, so a contract
+        certified against this profile must expose `deposit` and `balance` and
+        must satisfy the behavioural rules attached to them.
+      - >-
+        The example declares no optional method. An optional method would be
+        modelled with `requirement: optional` and would still need its own
+        authorization, event and failure requirements, because an optional method
+        that is present is still bound by them.
+
+  provenance:
+    source: composite
+    derived_from: Estamora example set, written for documentation purposes
+    interpretation_notes:
+      - >-
+        The interface is invented for this example, so every requirement in the
+        bundle is an interpretation rather than a transcription. It is recorded
+        here, in the one place a reader is most likely to look, so that the
+        absence of an upstream citation is explained instead of merely missing.
+      - >-
+        `deposit` takes the depositor as an explicit `from` argument rather than
+        deriving it from the invoker, because a profile that derived the actor
+        from the invocation would have nothing to state about authorization
+        coverage, which is the dimension this example is built to demonstrate.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - deposit
+  shared_vectors:
+    - common

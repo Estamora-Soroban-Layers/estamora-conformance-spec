@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=../../../schema/failure.schema.json
+failures:
+  - id: missing-deposit-authorization
+    category: missing_authorization
+    summary: A deposit with no authorization from the depositing account must be rejected.
+    description: >-
+      The call must fail and the state must be unchanged. Because this interface
+      defines no error codes, the requirement is stated semantically: the runner
+      does not assert a particular payload, only that the call did not succeed and
+      that nothing moved.
+    methods:
+      - deposit
+    trigger: The account named in `from` has supplied no authorization for the invocation.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      A contract that credits the balance and reports success without ever
+      consulting authorization is indistinguishable from a correct contract under
+      a positive-only suite, which is exactly the gap this failure requirement
+      closes.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: wrong-deposit-actor
+    category: wrong_actor
+    summary: A deposit authorized by a different account must be rejected.
+    description: >-
+      The invocation carries a valid authorization, but it belongs to an account
+      other than the one named in `from`. This is the case a contract fails when it
+      verifies that *a* signature is present without verifying whose it is.
+    methods:
+      - deposit
+    trigger: The authorization presented belongs to an account other than the `from` argument.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      Separating this from missing authorization is what makes the authorization
+      model useful. A single "unauthorized" category cannot tell a reader whether
+      the contract checked the actor or merely the presence of a signature, and the
+      second mistake is the one that loses funds.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: invalid-deposit-amount
+    category: invalid_amount
+    summary: A deposit of zero or a negative amount must be rejected.
+    description: >-
+      A zero deposit still emits a deposit event and still consumes ledger entries,
+      so accepting it lets a caller flood consumers with credits that moved
+      nothing. A negative amount must never be a way to move value out of an
+      account.
+    methods:
+      - deposit
+    trigger: The `amount` argument is zero or negative.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      The interface offers no withdrawal, so a negative amount accepted by
+      arithmetic would be the only way to remove value, and it would do so without
+      any of the authorization requirements a withdrawal would need to carry.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

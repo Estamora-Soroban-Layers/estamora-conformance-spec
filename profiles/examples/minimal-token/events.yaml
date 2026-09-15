@@ -1,0 +1,58 @@
+# yaml-language-server: $schema=../../../schema/event.schema.json
+events:
+  - id: deposit
+    name: deposit
+    requirement: required
+    summary: Exactly one deposit event must describe a successful credit.
+    description: >-
+      Consumers reconstruct balances from this event, so a deposit that settles
+      without emitting it, emits it twice, or states an amount that disagrees with
+      the balance change leaves every downstream indexer wrong even though the
+      contract's own state is correct. The amount is bound to the operation's
+      `amount` argument rather than to a literal, so the requirement survives a
+      change of fixture.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: deposit
+        semantics: The event discriminator, which distinguishes this event from any other the contract emits.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: from
+        semantics: The account that was credited, which must be the account the event's data describes.
+    data:
+      format: scalar
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: input
+            name: amount
+          semantics: The credited quantity, which must equal the observed balance delta exactly.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations:
+      - balances-are-non-negative
+    notes:
+      - >-
+        The data format is fixed as a scalar rather than left open. This interface
+        defines exactly one data field, so accepting two encodings would make the
+        event's structure ambiguous for a consumer that has to parse it.
+      - >-
+        `ordering` is empty because the interface emits this event from a single
+        method. Ordering requirements only carry information when two events can
+        be emitted by one call.

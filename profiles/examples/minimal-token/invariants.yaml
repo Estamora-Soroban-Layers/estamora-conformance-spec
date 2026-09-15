@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=../../../schema/invariant.schema.json
+invariants:
+  - id: balances-are-non-negative
+    title: Every observed balance is non-negative
+    kind: bounds
+    severity: error
+    summary: No balance may be reported below zero, whatever the caller does.
+    description: >-
+      Evaluated once against each member of the balance set rather than against
+      the accounts a single operation names, so a contract that lets one account
+      fall below zero is caught even when the aggregate is unchanged. This is the
+      case a conservation rule alone cannot see: a negative balance in one account
+      offset by a positive balance in another conserves the total.
+    scope:
+      methods:
+        - deposit
+      outcomes:
+        - success
+    resource: balances
+    predicate:
+      kind: greater_or_equal
+      left:
+        kind: resource_member
+      right:
+        kind: literal
+        value: "0"
+    rationale: >-
+      A negative balance is not representable in the fixture model, so a contract
+      that produces one cannot be verified at all: every subsequent assertion is
+      evaluated against a state the model cannot express. Rejecting the state is
+      therefore a precondition for trusting any other result about the contract.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: failed-deposit-cannot-mutate
+    title: A rejected deposit cannot change protected state
+    kind: authorization_blocks_mutation
+    severity: error
+    summary: When authorization is missing or wrong, no balance may change.
+    description: >-
+      Scoped to the failure outcome of `deposit`, so it is evaluated only after a
+      call that must be rejected. A contract that performs the credit and then
+      reports an authorization failure has, in practice, credited the caller while
+      telling them it did not, and every consumer that trusts the error path
+      reconstructs a different ledger from the contract's own.
+    scope:
+      methods:
+        - deposit
+      outcomes:
+        - failure
+    rationale: >-
+      The authorization model separates "no authorization" from "wrong actor" so
+      that a contract which merely checks that a signature exists is identified.
+      This invariant covers the step after that check: having rejected the call,
+      the contract must also leave the state alone.

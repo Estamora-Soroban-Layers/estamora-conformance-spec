@@ -1,0 +1,85 @@
+# yaml-language-server: $schema=../../../schema/method.schema.json
+methods:
+  - id: deposit
+    name: deposit
+    requirement: required
+    summary: Credit the depositing account with an exact amount of tokens.
+    description: >-
+      The only way tokens are created in this interface. The call must be
+      authorized by the account named in `from`, and the credited balance must
+      equal the requested amount exactly: clamping, rounding and partial credit
+      are all violations.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose balance is credited, and the account that must authorize the call.
+        authorization:
+          required: true
+          semantics: >-
+            The address supplied here must hold token-level authorization for this
+            invocation. A signature from any other account does not satisfy the
+            requirement, because the credit changes this account's balance.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The exact quantity to credit. Must be strictly positive; zero and negative amounts are invalid.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the effect is observable through balance and the deposit event.
+    mutability: mutating
+    invocation: invoke
+    authorization:
+      - depositor-authorizes-deposit
+    events:
+      - deposit
+    failures:
+      - missing-deposit-authorization
+      - wrong-deposit-actor
+      - invalid-deposit-amount
+    behaviors:
+      - deposit-credits-balance
+      - deposit-without-authorization-fails
+    notes:
+      - >-
+        The method is not idempotent: two identical successful calls credit the
+        amount twice, which is why the event correlation to the balance delta
+        matters.
+
+  - id: balance
+    name: balance
+    requirement: required
+    summary: Report the balance held by an address.
+    description: >-
+      A read-only query. It must never fail for a syntactically valid address,
+      including an address that has never deposited, which must report zero
+      rather than trapping or returning an absent value.
+    args:
+      - name: owner
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose balance is read. Any account may read any balance.
+        authorization:
+          required: false
+          semantics: >-
+            Reading a balance is public information. Requiring authorization would
+            make the balance of an account unreadable by anyone but its holder,
+            which would break every consumer that indexes the token.
+    returns:
+      type:
+        kind: prim
+        name: i128
+      semantics: The exact balance held by the address, or zero when it holds none.
+    mutability: readonly
+    invocation: read_only
+    authorization:
+      - balance-requires-no-authorization
+    events: []
+    failures: []
+    behaviors:
+      - balance-of-any-address-is-non-negative

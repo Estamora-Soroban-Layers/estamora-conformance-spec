@@ -1,0 +1,90 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: deposit-without-authorization-fails
+profile: minimal-token
+profile_version: "0.1"
+title: A deposit the depositor has not authorized fails and moves nothing
+description: >-
+  Alice holds 100 and the call presents no authorization from her. The invocation
+  must be rejected, her balance must be unchanged, and no deposit event may be
+  emitted. This vector is mandatory for the profile: a suite of only positive
+  cases cannot distinguish a contract that checks authorization from one that
+  never looks at it, because both succeed when the caller is authorized.
+kind: negative
+method: deposit
+tags: [deposit, negative, authorization, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The account that must authorize the deposit, and deliberately does not.
+  balances:
+    alice: "100"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: false
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: []
+  expected: rejected
+
+expected:
+  outcome: failure
+  failure: missing-deposit-authorization
+  state_assertions:
+    - id: balance-unchanged
+      description: A rejected deposit must leave the depositor's balance untouched.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+  events:
+    required: []
+    forbidden:
+      - deposit
+  invariants:
+    - failed-deposit-cannot-mutate
+
+assertions:
+  - id: credit-did-not-happen
+    category: behavior
+    description: The rejected call must not have credited any amount to the depositor.
+    predicate:
+      kind: equal
+      left:
+        kind: read
+        method: balance
+        args:
+          - kind: actor
+            ref: alice
+      right:
+        kind: literal
+        value: "100"
+
+rationale: >-
+  A contract that credits the balance and reports failure, or that emits the deposit
+  event before checking authorization, leaves every consumer that trusts the error
+  path reconstructing a different ledger from the contract's own state. The vector
+  pairs the rejection with unchanged state and an absent event so that either
+  mistake is observable.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

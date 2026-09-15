@@ -1,0 +1,103 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: deposit-credits-balance
+profile: minimal-token
+profile_version: "0.1"
+title: An authorized deposit credits the depositor with the exact amount
+description: >-
+  Alice holds 100 and deposits 250. Afterwards she must hold 350, the deposit
+  event must describe the credit with the account and amount the caller supplied,
+  and the non-negative balance invariant must still hold. This is the baseline
+  vector for the interface: it establishes that the credited quantity is the
+  requested quantity before any more specific property is checked.
+kind: positive
+method: deposit
+tags: [deposit, positive, authorization, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The depositor, whose balance is credited and whose authorization is required.
+  balances:
+    alice: "100"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: balance-increases-by-amount
+      description: The depositor's balance must equal its previous value plus the requested amount.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "350"
+  events:
+    required:
+      - event: deposit
+        topics:
+          - kind: literal
+            value: deposit
+          - kind: actor
+            ref: alice
+        data:
+          - kind: literal
+            value: "250"
+    forbidden: []
+  invariants:
+    - balances-are-non-negative
+
+assertions:
+  - id: credit-is-not-rounded
+    category: behavior
+    description: The credited quantity must be the requested quantity, not a rounded or fee-adjusted value.
+    predicate:
+      kind: equal
+      left:
+        kind: read
+        method: balance
+        args:
+          - kind: actor
+            ref: alice
+      right:
+        kind: arithmetic
+        op: "+"
+        operands:
+          - kind: literal
+            value: "100"
+          - kind: literal
+            value: "250"
+
+rationale: >-
+  Establishes that value is created in the amount requested. If this vector fails,
+  no result from the more specific vectors can be interpreted, because the contract
+  is not performing the deposit the interface describes.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
