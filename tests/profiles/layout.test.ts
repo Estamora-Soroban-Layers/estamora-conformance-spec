@@ -37,7 +37,7 @@ function entries(directory: string): string[] {
   }
 }
 
-function directories(directory: string): string[] {
+function subdirectories(directory: string): string[] {
   return entries(directory).filter((entry) => {
     try {
       return statSync(join(directory, entry)).isDirectory();
@@ -70,7 +70,7 @@ describe("top-level layout", () => {
   it.each(["schema", "profiles", "vectors", "examples", "scripts", "docs"])(
     "publishes the %s directory",
     (name) => {
-      expect(directories(REPO_ROOT), name).toContain(name);
+      expect(subdirectories(REPO_ROOT), name).toContain(name);
     },
   );
 
@@ -90,7 +90,7 @@ describe("top-level layout", () => {
   });
 
   it("keeps the test suite inside the tree the tsconfig typechecks", () => {
-    expect(directories(REPO_ROOT)).toContain("tests");
+    expect(subdirectories(REPO_ROOT)).toContain("tests");
     expect(join(REPO_ROOT, "tests").startsWith(TESTS_DIR)).toBe(true);
   });
 });
@@ -117,11 +117,11 @@ describe("profile layout", () => {
   });
 
   it("keeps only version directories, the example set and a README beside each profile id", () => {
-    for (const id of directories(PROFILES_DIR)) {
+    for (const id of subdirectories(PROFILES_DIR)) {
       if (id === "examples") {
         continue;
       }
-      for (const version of directories(join(PROFILES_DIR, id))) {
+      for (const version of subdirectories(join(PROFILES_DIR, id))) {
         expect(version, `profiles/${id}/${version}`).toMatch(/^\d+\.\d+$/u);
       }
       for (const file of files(join(PROFILES_DIR, id))) {
@@ -130,15 +130,25 @@ describe("profile layout", () => {
     }
   });
 
-  it("puts exactly the seven bundle documents and a vector directory in a version directory", () => {
-    for (const directory of discoverProfileDirectories(PROFILES_DIR)) {
-      if (directory.startsWith(EXAMPLE_PROFILES_DIR)) {
-        continue;
-      }
+  it("gives every bundle exactly the seven documents and a vector directory", () => {
+    // The rule applies to a released profile and to a worked example alike: a
+    // bundle is defined by its file set, and a consumer that reads six of the
+    // seven documents is reading a different specification.
+    const bundles = discoverProfileDirectories(PROFILES_DIR);
+    expect(bundles.length).toBeGreaterThan(0);
+    for (const directory of bundles) {
       const expected = [...Object.values(PROFILE_BUNDLE_FILES)].sort();
       expect(files(directory).sort(), directory).toEqual(expected);
-      expect(directories(directory).sort(), directory).toEqual(["vectors"]);
+      expect(subdirectories(directory).sort(), directory).toEqual(["vectors"]);
     }
+  });
+
+  it("publishes a worked example bundle for each documented scenario", () => {
+    expect(subdirectories(EXAMPLE_PROFILES_DIR).sort()).toEqual([
+      "authorization-sensitive",
+      "event-sensitive",
+      "minimal-token",
+    ]);
   });
 
   it("writes the current Estamora format version into every profile document", () => {
@@ -154,8 +164,8 @@ describe("profile layout", () => {
 
 describe("vector layout", () => {
   it("groups the shared library by set and operation", () => {
-    for (const set of directories(VECTORS_DIR)) {
-      for (const operation of directories(join(VECTORS_DIR, set))) {
+    for (const set of subdirectories(VECTORS_DIR)) {
+      for (const operation of subdirectories(join(VECTORS_DIR, set))) {
         expect(collectYamlFiles(join(VECTORS_DIR, set, operation)).length).toBeGreaterThan(0);
       }
     }
@@ -177,7 +187,7 @@ describe("example layout", () => {
     ]);
     // The example set is flat on purpose: each file is a single document that
     // demonstrates exactly one schema, so nothing here may be a bundle.
-    expect(directories(EXAMPLES_DIR)).toEqual([]);
+    expect(subdirectories(EXAMPLES_DIR)).toEqual([]);
   });
 });
 
