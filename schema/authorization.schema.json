@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/authorization.schema.json",
+  "title": "Estamora Authorization Requirements",
+  "description": "Authorization is a first-class conformance dimension, not a side effect of calling a method. Estamora requires the model to distinguish authorized success from unauthorized failure and from wrong-actor failure, because a contract that returns an error in all three cases is not conformant: it accepted a signature it should have rejected, or rejected one it should have accepted, or asked the wrong principal to sign. Distinguishing these cases is what stops the specification from degenerating into \"the call returned an error, so it must be correct\".",
+  "type": "object",
+  "required": ["authorization_rules"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "authorization_rules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/authorizationRule"
+      }
+    }
+  },
+  "$defs": {
+    "authorizationActor": {
+      "title": "Authorizing principal",
+      "type": "object",
+      "description": "Which principal the specification requires to authorize an invocation.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "argument"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "argument"
+            },
+            "argument": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "description": "Name of the method argument holding the required address, e.g. `from` for a transfer."
+            },
+            "on_behalf_of": {
+              "type": "boolean",
+              "default": false,
+              "description": "Whether the argument authorizes a movement of value it does not itself own, as `spender` does in transfer_from."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "invoker"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "authorizationOutcome": {
+      "title": "Expected authorization outcome",
+      "type": "object",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "succeed"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "failure"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "fail"
+            },
+            "failure": {
+              "$ref": "profile.schema.json#/$defs/identifier",
+              "description": "Id of the `failures.yaml` entry this path must produce."
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "authorizationRule": {
+      "type": "object",
+      "required": [
+        "id",
+        "summary",
+        "methods",
+        "actor",
+        "coverage",
+        "unauthorized",
+        "wrong_actor",
+        "replay_sensitive"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of the methods this rule governs."
+        },
+        "actor": {
+          "$ref": "#/$defs/authorizationActor"
+        },
+        "coverage": {
+          "$ref": "#/$defs/authorizationCoverage"
+        },
+        "unauthorized": {
+          "$ref": "#/$defs/authorizationOutcome",
+          "description": "What must happen when no valid authorization is supplied. Distinguished from `wrong_actor` because a contract may correctly reject a missing signature and incorrectly accept a substituted one."
+        },
+        "wrong_actor": {
+          "$ref": "#/$defs/authorizationOutcome",
+          "description": "What must happen when a different principal authorizes the invocation."
+        },
+        "replay_sensitive": {
+          "type": "boolean",
+          "description": "Whether reusing an authorization payload across two invocations must be rejected. Only set true where the upstream specification or the contract's own nonce handling makes replay meaningful."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "actor": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "none"
+                  }
+                },
+                "required": ["kind"]
+              }
+            },
+            "required": ["actor"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "arguments": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              },
+              "replay_sensitive": {
+                "type": "boolean",
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "actor": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "const": "invoker"
+                  }
+                },
+                "required": ["kind"]
+              }
+            },
+            "required": ["actor"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "coverage": {
+                "type": "object",
+                "properties": {
+                  "arguments": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "authorizationCoverage": {
+      "type": "object",
+      "description": "How the set of authorization-bearing arguments must relate to the set of arguments the contract actually covers. `exact` is the strict reading required by SEP-41-style interfaces: the contract must demand signatures over precisely the arguments that move value.",
+      "required": ["mode", "arguments"],
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["exact", "at_least", "at_most"],
+          "description": "`exact` requires the covered set to equal `arguments`; `at_least` permits the contract to cover more; `at_most` permits it to cover fewer only when the missed arguments carry no authority."
+        },
+        "arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "description": "Argument names that must be covered by the caller's authorization."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "exact"
+              }
+            },
+            "required": ["mode"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "arguments": {
+                "type": "array",
+                "minItems": 1
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
