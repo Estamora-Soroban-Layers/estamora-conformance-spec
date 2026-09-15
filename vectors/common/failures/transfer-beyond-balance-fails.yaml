@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: transfer-beyond-balance-fails
+profile: "*"
+profile_version: "1.0"
+title: Any token must refuse a transfer larger than the sender's balance
+description: >-
+  A profile-independent scenario, declared against the wildcard profile, because
+  the requirement holds for every fungible token regardless of which interface it
+  claims. Alice holds 100 and attempts to send 250. The call must fail and no
+  value may move. This vector exists so that the most dangerous negative case is
+  stated once and reused by every token profile instead of being restated, and
+  possibly softened, in each one.
+kind: negative
+method: transfer
+tags: [transfer, negative, profile-independent]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: An account funded below the requested transfer amount.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The intended recipient, who must receive nothing.
+  balances:
+    alice: "100"
+    bob: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: failure
+  failure_category: insufficient_balance
+  state_assertions:
+    - id: sender-unchanged
+      description: A rejected transfer must leave the sender's balance untouched.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: recipient-unchanged
+      description: A rejected transfer must leave the recipient's balance untouched.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden: [transfer]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  A contract that clamps the amount, saturates at zero, or silently transfers a
+  partial amount passes every positive vector while losing value for its users.
+  Stating the case against the wildcard profile means a new token profile inherits
+  the requirement rather than having to remember to restate it.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface

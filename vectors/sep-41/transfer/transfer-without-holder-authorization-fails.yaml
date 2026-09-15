@@ -1,0 +1,98 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: transfer-authorized-by-wrong-actor-fails
+profile: sep-41
+profile_version: "1.0"
+title: A transfer signed by the wrong principal must be refused
+description: >-
+  Bob holds a valid signature of his own and uses it to move 250 out of Alice's
+  balance. The call must fail and Alice's balance must be untouched. This vector
+  is the counterpart to the unsigned case: a contract that checks only for the
+  presence of an authorization payload, without checking whose it is, passes the
+  unsigned vector and fails this one. The two together are what establish that
+  authorization is checked rather than merely required.
+kind: authorization
+method: transfer
+tags: [transfer, authorization, wrong-actor]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose authorization was never obtained.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The attacker whose own signature substitutes for the holder's.
+  balances:
+    alice: "1000"
+    bob: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [bob]
+  expected: rejected
+  substituted_for: [alice]
+
+expected:
+  outcome: failure
+  failure: wrong-actor
+  state_assertions:
+    - id: holder-balance-untouched
+      description: A substituted signature must not move the holder's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: attacker-gains-nothing
+      description: A substituted signature must not credit the attacker.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden: [transfer]
+  invariants: [unauthorized-operation-does-not-mutate-state]
+
+assertions: []
+
+rationale: >-
+  Distinguishing a missing signature from a wrong one is the difference between
+  testing that authorization happens and testing that it is correct. The failure
+  is declared as the wrong-actor category rather than as a generic
+  missing-authorization so that a report says which of the two checks failed,
+  which is the diagnostic a contract author actually needs.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

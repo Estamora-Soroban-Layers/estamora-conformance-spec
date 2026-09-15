@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: funded-balance-is-reported
+profile: sep-41
+profile_version: "1.0"
+title: A funded account reports exactly the balance it holds
+description: >-
+  Alice holds 1234 and reading her balance must return 1234, not a rounded or
+  normalised value. The amount is deliberately not a round number: a contract
+  that applies any scaling, truncation or decimal adjustment in the balance
+  accessor is invisible when every fixture uses powers of ten.
+kind: positive
+method: balance
+tags: [balance, positive]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: A funded account whose exact balance is asserted.
+  balances:
+    alice: "1234"
+  allowances: []
+  total_supply: "1234"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs:
+  id:
+    kind: actor
+    ref: alice
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  returns:
+    kind: literal
+    value: "1234"
+  state_assertions:
+    - id: exact-balance-reported
+      description: The accessor must return the stored balance without scaling.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "1234"
+  events:
+    required: []
+    forbidden: [transfer, approve, burn]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  A balance accessor that scales or truncates makes every downstream amount
+  wrong by a consistent factor, which is far harder to notice than an outright
+  failure because the ratio between balances stays plausible. Using a
+  non-round fixture value is what makes such a defect observable.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

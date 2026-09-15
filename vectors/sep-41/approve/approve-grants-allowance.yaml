@@ -1,0 +1,117 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: approve-grants-allowance
+profile: sep-41
+profile_version: "1.0"
+title: approve establishes an allowance where none existed
+description: >-
+  Alice grants Carol an allowance of 500 expiring at ledger 5000, having granted
+  nothing before. Afterwards the allowance must read as 500 and exactly one
+  approve event must report that amount together with the expiry. This is the
+  shared counterpart to the profile-owned overwrite vector: together they
+  distinguish creating an allowance from replacing one.
+kind: positive
+method: approve
+tags: [approve, positive, allowance, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder granting an allowance for the first time.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender receiving the allowance.
+  balances:
+    alice: "1000"
+    carol: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  spender:
+    kind: actor
+    ref: carol
+  amount:
+    kind: literal
+    value: "500"
+  live_until_ledger:
+    kind: literal
+    value: 5000
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: allowance-established
+      description: The allowance must read as the approved amount.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "500"
+    - id: holder-balance-unchanged
+      description: Approving must not move tokens by itself.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+  events:
+    required:
+      - event: approve
+        topics:
+          - kind: literal
+            value: approve
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: carol
+        data:
+          - kind: literal
+            value: "500"
+          - kind: literal
+            value: 5000
+    forbidden: [transfer, burn]
+  invariants: [allowances-non-negative]
+
+assertions: []
+
+rationale: >-
+  Establishes the positive baseline for the allowance model before the negative
+  cases probe its limits. An allowance is a spending limit and not a reservation,
+  so the holder's balance is asserted unchanged: an implementation that escrows
+  the approved amount would satisfy the allowance assertion while breaking the
+  meaning of approve.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

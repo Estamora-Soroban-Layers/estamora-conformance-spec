@@ -1,0 +1,96 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: zero-amount-transfer-succeeds
+profile: "*"
+profile_version: "1.0"
+title: A zero-amount transfer must succeed without moving value
+description: >-
+  A profile-independent boundary scenario. Alice transfers zero tokens to Bob.
+  Every interface that defines transfer for non-negative amounts treats zero as a
+  valid quantity rather than as an error, so the call must succeed, both balances
+  must be unchanged, and no exception may be raised. The case matters because an
+  implementation that rejects zero commonly does so only for one of the two
+  accounts involved, which makes the behaviour depend on whether the destination
+  already holds a balance.
+kind: boundary
+method: transfer
+tags: [transfer, boundary, profile-independent]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The sender of a zero-value transfer.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The recipient of a zero-value transfer.
+  balances:
+    alice: "1000"
+    bob: "500"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "0"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: sender-unchanged
+      description: A zero-value transfer must not alter the sender's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: recipient-unchanged
+      description: A zero-value transfer must not alter the recipient's balance.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden: [approve, burn]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  Zero is the boundary between a valid quantity and the invalid negative range,
+  so it is where an off-by-one in a range check shows up. Requiring success with
+  no state change pins the boundary without claiming anything about which events
+  an implementation chooses to emit for a no-op movement.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface

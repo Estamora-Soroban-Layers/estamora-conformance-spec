@@ -1,0 +1,146 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: transfer-from-consumes-allowance
+profile: sep-41
+profile_version: "1.0"
+title: A successful transfer_from reduces the allowance as well as the balance
+description: >-
+  Alice approved Carol for 600 and holds 1000. Carol transfers 250 from Alice to
+  Bob. Alice must fall to 750, Bob must reach 250, and the allowance must fall to
+  350. The third assertion is the one that matters: a contract that moves the
+  balances correctly but forgets to consume the allowance lets Carol repeat the
+  transfer indefinitely at Alice's expense, and every balance assertion here would
+  still look consistent on the first call.
+kind: positive
+method: transfer-from
+tags: [transfer-from, positive, allowance, state]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance and allowance are both reduced.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The recipient of the transferred tokens.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender exercising a granted allowance.
+  balances:
+    alice: "1000"
+    bob: "0"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "600"
+      live_until_ledger: 5000
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  spender:
+    kind: actor
+    ref: carol
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [carol]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: holder-debited
+      description: The holder's balance must fall by the transferred amount.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "750"
+    - id: recipient-credited
+      description: The recipient's balance must rise by the transferred amount.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+        right:
+          kind: literal
+          value: "250"
+    - id: allowance-consumed
+      description: The allowance must be reduced by the transferred amount.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "350"
+  events:
+    required:
+      - event: transfer
+        topics:
+          - kind: literal
+            value: transfer
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: bob
+        data:
+          - kind: literal
+            value: "250"
+    forbidden: [approve, burn]
+  invariants:
+    - allowance-non-increasing-without-approve
+    - balances-conserved-by-transfer
+
+assertions: []
+
+rationale: >-
+  The allowance reduction is the entire reason transfer_from exists as a separate
+  method from transfer. Asserting it explicitly means a report distinguishes a
+  contract that moves value incorrectly from one that moves value correctly but
+  never charges the allowance, which are different defects with different fixes.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

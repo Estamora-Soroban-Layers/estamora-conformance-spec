@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: unknown-account-balance-is-zero
+profile: "*"
+profile_version: "1.0"
+title: Reading the balance of an address with no entry must not fail
+description: >-
+  A profile-independent boundary scenario. Dave has never received tokens. Any
+  interface that exposes a balance query has to answer for an address it has no
+  record of, and the only sensible answer is zero rather than an error, because
+  failing would make an unfunded recipient indistinguishable from an invalid
+  one. This is declared against the wildcard profile so that it is not restated,
+  and weakened, per token implementation.
+kind: boundary
+method: balance
+tags: [balance, boundary, profile-independent]
+
+fixtures:
+  actors:
+    - name: dave
+      kind: account
+      ref: common/addresses/dave
+      description: An address that has never held a balance.
+  balances: {}
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    dave: true
+
+inputs:
+  id:
+    kind: actor
+    ref: dave
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  returns:
+    kind: literal
+    value: "0"
+  state_assertions:
+    - id: unfunded-account-reads-zero
+      description: The unfunded address must report zero rather than failing.
+      resource:
+        kind: balance
+        account: dave
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: dave
+        right:
+          kind: literal
+          value: "0"
+  events:
+    required: []
+    forbidden: [transfer, approve, burn]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  A caller that transfers to a fresh account must be able to read that account's
+  balance both before and after. If the read fails for an address with no entry,
+  every wallet has to special-case the error as meaning zero, which is exactly the
+  kind of implicit convention a specification should not leave unstated.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface

@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=../../../schema/vector.schema.json
+id: transfer-without-signature-fails
+profile: "*"
+profile_version: "1.0"
+title: Any token must refuse a transfer that nobody authorized
+description: >-
+  A profile-independent authorization scenario. Alice holds 1000 and Bob attempts
+  to move 250 out of her balance with no authorization from Alice at all. The
+  call must fail and no value may move. This is the negative case that separates a
+  token from an open faucet, and it is stated against the wildcard profile because
+  no reasonable token interface permits it.
+kind: authorization
+method: transfer
+tags: [transfer, authorization, negative, profile-independent]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance is the target of an unauthorized attempt.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The caller attempting to move funds it does not control.
+  balances:
+    alice: "1000"
+    bob: "0"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: []
+  expected: rejected
+
+expected:
+  outcome: failure
+  failure_category: missing_authorization
+  state_assertions:
+    - id: holder-balance-unchanged
+      description: An unauthorized transfer must not move the holder's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+    - id: caller-gains-nothing
+      description: An unauthorized transfer must not credit the caller.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden: [transfer]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  The single most consequential negative case for any token. It is deliberately
+  expressed with no signer at all rather than with the wrong signer, so that a
+  contract which merely checks that some authorization payload exists, without
+  checking whose, is caught by the wrong-actor vectors rather than passing here.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface
