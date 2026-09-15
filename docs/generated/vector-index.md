@@ -13,12 +13,12 @@ is inherited by every profile that lists `common` in `includes.shared_vectors`.
 | `approve-overwrites-allowance` | `sep-41@1.0` | positive | `approve` | `profiles/sep-41/1.0/vectors/approve/approve-overwrites-allowance.yaml` |
 | `balance-of-unknown-address-is-zero` | `sep-41@1.0` | boundary | `balance` | `profiles/sep-41/1.0/vectors/balance/balance-of-unknown-address-is-zero.yaml` |
 | `burn-from-beyond-allowance-fails` | `sep-41@1.0` | state | `burn-from` | `profiles/sep-41/1.0/vectors/burn-from/burn-from-beyond-allowance-fails.yaml` |
-| `burn-reduces-holder-balance` | `sep-41@1.0` | invariant | `burn` | `profiles/sep-41/1.0/vectors/burn/burn-reduces-balance.yaml` |
+| `burn-reduces-holder-balance` | `sep-41@1.0` | invariant | `burn` | `profiles/sep-41/1.0/vectors/burn/burn-reduces-holder-balance.yaml` |
 | `decimals-reports-configured-precision` | `sep-41@1.0` | positive | `decimals` | `profiles/sep-41/1.0/vectors/decimals/decimals-reports-configured-precision.yaml` |
 | `funded-balance-is-reported` | `sep-41@1.0` | positive | `balance` | `vectors/sep-41/balance/funded-balance-is-reported.yaml` |
 | `name-reports-non-empty-name` | `sep-41@1.0` | positive | `name` | `profiles/sep-41/1.0/vectors/name/name-reports-non-empty-name.yaml` |
 | `symbol-reports-non-empty-symbol` | `sep-41@1.0` | positive | `symbol` | `profiles/sep-41/1.0/vectors/symbol/symbol-reports-non-empty-symbol.yaml` |
-| `transfer-authorized-by-wrong-actor-fails` | `sep-41@1.0` | authorization | `transfer` | `vectors/sep-41/transfer/transfer-without-holder-authorization-fails.yaml` |
+| `transfer-authorized-by-wrong-actor-fails` | `sep-41@1.0` | authorization | `transfer` | `vectors/sep-41/transfer/transfer-authorized-by-wrong-actor-fails.yaml` |
 | `transfer-beyond-balance-fails` | `*@1.0` | negative | `transfer` | `vectors/common/failures/transfer-beyond-balance-fails.yaml` |
 | `transfer-emits-exactly-one-event` | `sep-41@1.0` | event | `transfer` | `profiles/sep-41/1.0/vectors/transfer/transfer-emits-exactly-one-event.yaml` |
 | `transfer-from-beyond-allowance-fails` | `sep-41@1.0` | negative | `transfer-from` | `profiles/sep-41/1.0/vectors/transfer-from/transfer-from-beyond-allowance-fails.yaml` |
