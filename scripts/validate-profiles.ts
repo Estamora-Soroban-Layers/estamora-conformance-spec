@@ -24,7 +24,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { basename, join } from "node:path";
+import { basename, dirname, join } from "node:path";
 
 import {
   booleanFlag,
@@ -194,8 +194,15 @@ function validateBundle(
   if (bundle.identity !== undefined && bundle.valid) {
     const metadata = bundle.profile?.profile;
     if (metadata !== undefined) {
+      // Only a released profile has a version component in its path:
+      // `profiles/<id>/<MAJOR.MINOR>`. An example profile is a flat
+      // `profiles/examples/<name>`, so its declared version has no directory to
+      // agree with and requiring one would invent a release that does not exist.
+      // Comparing the parent directory against the declared id distinguishes the
+      // two cases without consulting the path constants.
       const expectedVersion = basename(bundle.directory);
-      if (metadata.version !== expectedVersion) {
+      const parentIsProfileId = basename(dirname(bundle.directory)) === metadata.id;
+      if (parentIsProfileId && metadata.version !== expectedVersion) {
         bag.error(
           ErrorCode.VERSION_ERROR,
           `Profile declares version ${JSON.stringify(metadata.version)} but its directory is named ${JSON.stringify(expectedVersion)}. A version that disagrees with its path makes every reference ambiguous.`,
