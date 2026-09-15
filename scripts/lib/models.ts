@@ -475,6 +475,25 @@ export interface VectorFixtures {
   readonly authorization: Readonly<Record<string, boolean>>;
 }
 
+/** Which conformance dimension an assertion belongs to. */
+export type AssertionCategory =
+  "interface" | "authorization" | "event" | "behavior" | "state" | "invariant" | "failure";
+
+/**
+ * A single, independently reportable check attached to a vector.
+ *
+ * Assertions carry their own identity and category so a report can name the
+ * exact rule that failed. Folding several checks into one boolean would make a
+ * failure say only that something was wrong, which is the diagnostic a contract
+ * author least wants.
+ */
+export interface AssertionDefinition {
+  readonly id: string;
+  readonly category: AssertionCategory;
+  readonly description: string;
+  readonly predicate: Predicate;
+}
+
 /** A first-class, executable specification artifact. */
 export interface VectorDefinition {
   readonly id: string;
@@ -492,6 +511,12 @@ export interface VectorDefinition {
   readonly authorization: {
     readonly actors: readonly string[];
     readonly expected: "accepted" | "rejected" | "not_required";
+    /**
+     * Actors whose authorization is deliberately replaced by another actor,
+     * used to construct wrong-actor cases. The signature is valid; it simply
+     * belongs to the wrong principal.
+     */
+    readonly substituted_for?: readonly string[];
   };
   readonly expected: {
     readonly outcome: "success" | "failure";
@@ -510,7 +535,7 @@ export interface VectorDefinition {
     };
     readonly invariants: readonly string[];
   };
-  readonly assertions: readonly Predicate[];
+  readonly assertions: readonly AssertionDefinition[];
   readonly rationale: string;
   readonly references: readonly string[];
 }
