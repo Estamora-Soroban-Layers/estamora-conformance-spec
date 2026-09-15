@@ -59,6 +59,13 @@ tooling that enforces it, and the first profile built on it.
 - **Four standalone example documents** under `examples/`, each demonstrating
   exactly one schema.
 
+- **Three worked example bundles** under `profiles/examples/` — `minimal-token`,
+  `authorization-sensitive` and `event-sensitive` — each a complete seven-document
+  bundle with its own vectors. They are validated by the same tooling as the
+  released profile, so the examples cannot drift away from the schemas they
+  illustrate. Each one is an illustration rather than a standard, which its
+  provenance block states.
+
 - **The release gate**, which ties the repository version to this changelog,
   requires every released profile to appear here by `id@version`, and refuses to
   let a placeholder marker reach a normative artefact.
