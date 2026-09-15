@@ -1,0 +1,59 @@
+{
+  "name": "@estamora/conformance-spec",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Normative, machine-readable specification layer for Estamora: profiles, vectors, schemas and validation tooling for Soroban contract behavioral conformance.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "packageManager": "npm@11.19.0",
+  "files": [
+    "schema",
+    "profiles"
+  ],
+  "scripts": {
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "validate:schemas": "tsx scripts/validate-schema.ts",
+    "validate:profiles": "tsx scripts/validate-profiles.ts",
+    "validate:vectors": "tsx scripts/check-vectors.ts",
+    "validate": "npm run validate:schemas && npm run validate:profiles && npm run validate:vectors && npm run release:check",
+    "docs:generate": "tsx scripts/generate-docs.ts",
+    "docs:check": "tsx scripts/generate-docs.ts --check",
+    "release:check": "tsx scripts/release-check.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "ci": "npm run format:check && npm run typecheck && npm run validate && npm run docs:check && npm run test"
+  },
+  "dependencies": {
+    "ajv": "8.20.0",
+    "ajv-formats": "3.0.1",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "26.5.1",
+    "prettier": "3.9.6",
+    "tsx": "4.23.13",
+    "typescript": "5.9.3",
+    "vitest": "5.0.0"
+  },
+  "keywords": [
+    "stellar",
+    "soroban",
+    "conformance",
+    "specification",
+    "json-schema",
+    "sep-41"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/issues"
+  },
+  "homepage": "https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec#readme"
+}

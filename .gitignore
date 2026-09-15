@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build and test artifacts
+dist/
+coverage/
+*.tsbuildinfo
+
+# Generated documentation is committed, but its scratch output is not
+.docs-tmp/
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Local environment overrides
+.env
+.env.local
+*.local.yaml
