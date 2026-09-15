@@ -9,6 +9,10 @@ requirements against a deployed contract, and producing a result, belongs to
 [`estamora-conformance-runner`](https://github.com/Estamora-Soroban-Layers/estamora-conformance-runner).
 Estamora consists of exactly those two repositories.
 
+**Read the specification: <https://estamora-soroban-layers.github.io/estamora-conformance-spec/>**
+— the site serves this document set alongside the schemas and profiles themselves, so
+every `$id` in [`schema/`](schema/) resolves to the document that declares it.
+
 ```mermaid
 flowchart LR
     subgraph S1["estamora-conformance-spec (this repository)"]
@@ -336,7 +340,9 @@ distinction, which is why it is a tested contract rather than a convention.
 
 ## Documentation
 
-The reference set lives in [`docs/`](docs/). Each document defines one part of the model
+The reference set is published at
+<https://estamora-soroban-layers.github.io/estamora-conformance-spec/> and lives in
+[`docs/`](docs/). Each document defines one part of the model
 normatively; where a document and a schema disagree, the schema governs and the document is
 a defect.
 
