@@ -1,0 +1,150 @@
+# yaml-language-server: $schema=../../../schema/invariant.schema.json
+invariants:
+  - id: balances-conserved-by-transfer
+    title: Transfers conserve the total of all balances
+    kind: conservation
+    severity: error
+    summary: Moving value between holders must not change the sum of all balances.
+    description: >-
+      The sum is taken across the whole fixture balance set rather than across the
+      two accounts named by the operation. That makes the invariant sensitive to a
+      contract that credits a third account, mints on transfer, or rounds a
+      remainder into a fee address, none of which a pairwise check would notice.
+    scope:
+      methods: [transfer, transfer-from]
+      outcomes: [success]
+    resource: balances
+    rationale: >-
+      A token whose supply drifts on ordinary transfers has a silently inflating
+      or deflating supply. Every balance shown to a user becomes wrong in
+      aggregate even though each individual transfer looks correct, and the error
+      is invisible until someone reconciles the ledger.
+    references:
+      - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+
+  - id: balances-non-negative
+    title: No balance is ever negative
+    kind: bounds
+    severity: error
+    summary: Every account's balance must be greater than or equal to zero.
+    description: >-
+      Evaluated once against each member of the balance set. A negative balance
+      means a value moved out of an account that did not have it, which is the
+      arithmetic signature of an overflow or of a missing balance check.
+    scope:
+      methods: ["*"]
+      outcomes: [success, failure]
+    resource: balances
+    predicate:
+      kind: greater_or_equal
+      left:
+        kind: resource_member
+      right:
+        kind: literal
+        value: "0"
+    rationale: >-
+      Balances are stored as signed integers, so an unchecked subtraction can
+      produce a negative value instead of trapping. A negative balance would
+      fabricate spending power out of nothing and would also break the
+      conservation invariant in a way that is hard to attribute after the fact.
+
+  - id: allowances-non-negative
+    title: No allowance is ever negative
+    kind: bounds
+    severity: error
+    summary: Every allowance must be greater than or equal to zero.
+    description: >-
+      Evaluated once against each member of the allowance set. An allowance is
+      reduced by use, so it is the value most likely to be driven below zero by an
+      unchecked subtraction.
+    scope:
+      methods: ["*"]
+      outcomes: [success]
+    resource: allowances
+    predicate:
+      kind: greater_or_equal
+      left:
+        kind: resource_member
+      right:
+        kind: literal
+        value: "0"
+    rationale: >-
+      A negative allowance would invert the meaning of the spending limit: a
+      subsequent comparison against a requested amount could pass for any
+      quantity. Left unchecked it converts a bounded approval into unlimited
+      authority.
+
+  - id: allowance-non-increasing-without-approve
+    title: An allowance only ever decreases unless it is replaced by approve
+    kind: monotonic
+    severity: error
+    summary: Consuming an allowance must not increase it.
+    description: >-
+      Scoped to the two methods that consume an allowance, because only approve is
+      permitted to raise one. An increase here would mean a spender can replenish
+      their own authority without the holder acting.
+    scope:
+      methods: [transfer-from, burn-from]
+      outcomes: [success]
+    resource: allowances
+    direction: non_increasing
+    rationale: >-
+      The allowance is the holder's only control over what a third party may
+      spend. A consumption path that raises it removes that control entirely,
+      since a spender could use it indefinitely up to the holder's full balance.
+    references:
+      - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+
+  - id: burn-does-not-increase-balances
+    title: Burning never increases the sum of balances
+    kind: monotonic
+    severity: error
+    summary: A burn must not raise the total of all balances.
+    description: >-
+      Burning removes value from circulation, so the aggregate may fall or stay
+      level when the burned amount is zero, but it must never rise.
+    scope:
+      methods: [burn, burn-from]
+      outcomes: [success]
+    resource: balances
+    direction: non_increasing
+    rationale: >-
+      A burn that increases aggregate balance is creating value rather than
+      destroying it. That contradicts the reason an administrative burn exists and
+      would silently corrupt any supply reconciliation built on the burn event.
+
+  - id: failed-operation-does-not-mutate-state
+    title: A failed operation leaves no trace
+    kind: state_unchanged
+    severity: error
+    summary: When an operation fails, the contract state must be exactly as it was.
+    description: >-
+      Applies to every method and to the failure outcome specifically, so a
+      contract cannot satisfy it by simply never failing.
+    scope:
+      methods: ["*"]
+      outcomes: [failure]
+    rationale: >-
+      A partially applied operation is worse than a rejected one, because the
+      caller cannot tell what happened and cannot safely retry. Half-completed
+      work also lets an attacker probe for asymmetric failures that leave the
+      contract in a state favourable to them.
+
+  - id: unauthorized-operation-does-not-mutate-state
+    title: A rejected authorization leaves no trace
+    kind: authorization_blocks_mutation
+    severity: error
+    summary: When authorization is refused, protected state must be unchanged.
+    description: >-
+      Separates authorization failures from other failures, because a contract
+      can correctly return an error while still having already written to storage
+      before the check ran.
+    scope:
+      methods: ["*"]
+      outcomes: [failure]
+    rationale: >-
+      The purpose of an authorization check is to prevent an effect, not to report
+      one. If state changes before the check, then a rejected call is
+      indistinguishable from an accepted one to anyone reading storage, and an
+      attacker can use the difference to build a state the contract never intended
+      to reach.
