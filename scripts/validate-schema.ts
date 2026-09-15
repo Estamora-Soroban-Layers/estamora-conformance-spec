@@ -39,6 +39,7 @@ import {
   SCHEMA_DIR,
   SCHEMA_FILES,
   SCHEMA_ID_BASE,
+  setMachineReadable,
   stringFlag,
   usage,
   type SchemaFileName,
@@ -60,6 +61,8 @@ function main(argv: readonly string[]): number {
     );
     return EXIT_CODES.SUCCESS;
   }
+
+  setMachineReadable(booleanFlag(args, "json"));
 
   const bag = new DiagnosticBag();
   const refs: CollectedRef[] = [];

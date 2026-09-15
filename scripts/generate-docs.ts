@@ -40,6 +40,7 @@ import {
   readdirSyncSafe,
   reportSummary,
   REPO_ROOT,
+  setMachineReadable,
   success,
   usage,
   VECTORS_DIR,
@@ -79,6 +80,8 @@ function main(argv: readonly string[]): number {
     process.stdout.write(`${usage(PROGRAM, DESCRIPTION, FLAGS)}\n`);
     return EXIT_CODES.SUCCESS;
   }
+
+  setMachineReadable(booleanFlag(args, "json"));
 
   const check = booleanFlag(args, "check");
   const bag = new DiagnosticBag();

@@ -48,6 +48,7 @@ import {
   readYamlFile,
   reportSummary,
   REPO_ROOT,
+  setMachineReadable,
   stringFlag,
   tally,
   usage,
@@ -112,6 +113,8 @@ function main(argv: readonly string[]): number {
     );
     return EXIT_CODES.SUCCESS;
   }
+
+  setMachineReadable(booleanFlag(args, "json"));
 
   const bag = new DiagnosticBag();
   const registry = getSchemaRegistry();

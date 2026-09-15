@@ -11,6 +11,22 @@ import type { DiagnosticBag } from "./diagnostics.ts";
 
 const useColor = process.env["NO_COLOR"] === undefined && process.stdout.isTTY === true;
 
+/**
+ * Whether stdout is reserved for a machine-readable document.
+ *
+ * With `--json` the entry points still want to report progress while they work,
+ * but a single stray line of prose makes the output unparsable. Redirecting the
+ * human-readable stream to nothing — while leaving warnings and failures on
+ * stderr, where they belong — keeps `estamora-validate-profiles --json | jq`
+ * working without removing the ability to watch a long run.
+ */
+let machineReadable = false;
+
+/** Reserve stdout for a machine-readable document, or release it again. */
+export function setMachineReadable(enabled: boolean): void {
+  machineReadable = enabled;
+}
+
 const CODES = {
   reset: "\u001b[0m",
   bold: "\u001b[1m",
@@ -26,11 +42,17 @@ function paint(code: keyof typeof CODES, text: string): string {
 
 /** Print a section heading. */
 export function heading(text: string): void {
+  if (machineReadable) {
+    return;
+  }
   process.stdout.write(`${paint("bold", text)}\n`);
 }
 
 /** Print a successful step. */
 export function success(text: string): void {
+  if (machineReadable) {
+    return;
+  }
   process.stdout.write(`${paint("green", "ok")} ${text}\n`);
 }
 
@@ -46,6 +68,9 @@ export function warning(text: string): void {
 
 /** Print a note in dimmed text. */
 export function note(text: string): void {
+  if (machineReadable) {
+    return;
+  }
   process.stdout.write(`${paint("dim", text)}\n`);
 }
 
