@@ -197,6 +197,7 @@ function validateBundle(
     profileIndex.set(bundle.identity.id, index);
   }
 
+  checkVectorDirectoryDeclaration(bundle, bag);
   checkDuplicateMethodNames(bundle, file, bag);
   checkMethodReferences(bundle, { authorizationIds, eventIds, behaviorIds, failureIds }, file, bag);
   checkAuthorizationRules(bundle, methodIds, failureIds, file, bag);
@@ -211,6 +212,43 @@ function validateBundle(
   }
 
   return bag.count("error") === before;
+}
+
+/**
+ * Check that the vector directories a profile declares match the ones on disk.
+ *
+ * An undeclared directory means vectors exist that no declaration accounts for,
+ * and a declared directory that does not exist means the manifest promises
+ * coverage the bundle does not provide. Both make the manifest an unreliable
+ * description of the profile, which is exactly what a consumer is entitled to
+ * treat it as.
+ */
+function checkVectorDirectoryDeclaration(bundle: ProfileBundle, bag: DiagnosticBag): void {
+  if (!bundle.valid || bundle.profile === undefined) {
+    return;
+  }
+  const vectorsRoot = join(bundle.directory, "vectors");
+  const declared = new Set(bundle.profile.includes.vectors);
+  const present = new Set(readdirSyncSafe(vectorsRoot).filter((entry) => entry !== "vectors"));
+
+  for (const entry of present) {
+    if (!declared.has(entry)) {
+      bag.error(
+        ErrorCode.PROFILE_ERROR,
+        `Vector directory ${JSON.stringify(entry)} exists but is not listed in includes.vectors, so its vectors are not part of the declared bundle and a consumer has no way to know they should run.`,
+        join(vectorsRoot, entry),
+      );
+    }
+  }
+  for (const entry of declared) {
+    if (!present.has(entry)) {
+      bag.error(
+        ErrorCode.PROFILE_ERROR,
+        `includes.vectors declares ${JSON.stringify(entry)} but no such directory exists, so the manifest promises coverage the bundle does not provide.`,
+        vectorsRoot,
+      );
+    }
+  }
 }
 
 /** Collect ids from a collection and report duplicates. */

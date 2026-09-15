@@ -114,12 +114,16 @@ includes:
   invariants: invariants.yaml
   failures: failures.yaml
   vectors:
+    - allowance
+    - approve
+    - balance
+    - burn
+    - burn-from
+    - decimals
+    - name
+    - symbol
     - transfer
     - transfer-from
-    - approve
-    - allowance
-    - balance
-    - decimals
   shared_vectors:
     - common
     - sep-41
