@@ -70,6 +70,20 @@ tooling that enforces it, and the first profile built on it.
   requires every released profile to appear here by `id@version`, and refuses to
   let a placeholder marker reach a normative artefact.
 
+- **Continuous integration** under `.github/`, as five workflows: the full
+  validation chain, a schema-only path, a profile-and-vector path, a documentation
+  currency check, and a release workflow that re-runs the chain against the tagged
+  commit before publishing anything. Every action is pinned to a version, every
+  workflow declares its permissions rather than inheriting them, every job sets a
+  timeout, and no workflow uses `pull_request_target`.
+
+- **The contributor documentation**: `README.md`, `CONTRIBUTING.md`,
+  `GOVERNANCE.md` and `SECURITY.md`, plus issue templates for profile proposals,
+  bug reports and improvements, a pull request template, and a dependency-update
+  configuration. `release:check` refuses to release a tree whose README is a stub,
+  whose community documents are empty, or whose workflows are missing — a check
+  that no automation runs is not a check.
+
 ### Notes on scope
 
 - The SEP-41 profile is declared `draft`. Upstream SEP-0041 is itself a draft
