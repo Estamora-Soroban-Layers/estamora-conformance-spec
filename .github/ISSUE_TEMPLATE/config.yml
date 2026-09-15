@@ -1,0 +1,22 @@
+# Issue-template chooser configuration.
+#
+# Blank issues are disabled on purpose. Every report about a specification needs the
+# same three things — the exact revision, the upstream citation, and the validator
+# output — and a blank issue reliably omits at least one of them, which turns the
+# first exchange into a request for information the reporter already had.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Question about a profile requirement
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/discussions
+    about: >-
+      For questions about what a requirement means or how to read it, rather than a
+      defect in it. If the requirement is genuinely ambiguous, that is a bug report:
+      an ambiguous requirement is a defect in a normative document.
+
+  - name: Conformance results for a deployed contract
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-runner/issues
+    about: >-
+      This repository defines conformance; it does not measure a contract.
+      Executing profiles against a deployed contract, and reporting the result,
+      belongs to estamora-conformance-runner.

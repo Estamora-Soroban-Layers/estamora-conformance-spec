@@ -1,0 +1,124 @@
+name: Profile proposal
+description: Propose a new conformance profile, or a new version of an existing one.
+title: "profile: "
+labels:
+  - profile
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A profile is a set of behavioural requirements, not a summary of an
+        interface. Before filling this in, read
+        [docs/profile-authoring.md](../blob/main/docs/profile-authoring.md) and
+        [VERSIONING.md](../blob/main/VERSIONING.md).
+
+        Two rules the proposal is judged against:
+
+        1. **Requirements are not invented.** Every requirement must come from an
+           upstream specification, an upstream implementation or an established
+           ecosystem convention, and every departure from the literal upstream text
+           must be recorded in the profile's `provenance` block.
+        2. **What a profile checks is what it must say.** A profile that describes an
+           interface without stating authorization, events, failure behaviour and
+           state transitions is an interface description, not a conformance profile.
+
+  - type: input
+    id: identity
+    attributes:
+      label: Profile identity
+      description: The proposed `id@MAJOR.MINOR`, e.g. `sep-41@1.1`.
+      placeholder: sep-41@1.1
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of proposal
+      options:
+        - A new profile for a standard that has none
+        - A new version of an existing profile
+        - An added requirement to an existing profile version
+        - A correction to a requirement that was transcribed incorrectly
+    validations:
+      required: true
+
+  - type: input
+    id: upstream
+    attributes:
+      label: Upstream specification
+      description: >-
+        The document the requirements come from, with an exact revision: repository,
+        path and version or commit.
+      placeholder: stellar-protocol@master ecosystem/sep-0041.md v0.5.1
+    validations:
+      required: true
+
+  - type: textarea
+    id: upstream-status
+    attributes:
+      label: Upstream status
+      description: >-
+        Is the upstream document itself draft, review or final? A profile that
+        encodes a draft standard cannot be `stable`, so this determines the status
+        the proposal can carry.
+    validations:
+      required: true
+
+  - type: textarea
+    id: dimensions
+    attributes:
+      label: Dimensions the profile will cover
+      description: >-
+        For each dimension, state what the profile will be able to check. An empty
+        dimension is a decision that must be justified here rather than left out.
+      value: |
+        - Interface: which methods are required, and with what signatures
+        - Authorization: which principal must authorize which call and argument
+        - Events: which events are required, with what structure and cardinality
+        - Behaviour: what each successful call must leave behind
+        - Failure: which calls must fail, and what state they must leave
+        - State transitions: which observable values must change, and by how much
+        - Invariants: which properties must survive every call
+    validations:
+      required: true
+
+  - type: textarea
+    id: ambiguities
+    attributes:
+      label: Upstream ambiguities and your reading of them
+      description: >-
+        Where the upstream text is ambiguous, say what you intend to encode and why.
+        These become the profile's `interpretation_notes`, which the schema requires
+        to be non-empty for exactly this reason.
+    validations:
+      required: true
+
+  - type: textarea
+    id: negative-cases
+    attributes:
+      label: Negative cases
+      description: >-
+        Name at least three ways a contract could satisfy the interface and still be
+        non-conformant. These become mandatory negative vectors. A proposal that
+        cannot name any has not established what conformance means.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: Confirmation
+      options:
+        - label: >-
+            I have read VERSIONING.md and the proposed identity follows the profile
+            versioning rule.
+          required: true
+        - label: >-
+            I have not proposed a requirement that is absent from the upstream
+            source, and every interpretation is recorded rather than implicit.
+          required: true
+        - label: >-
+            I understand that passing this profile will not be presented as proof
+            that a contract is secure.
+          required: true

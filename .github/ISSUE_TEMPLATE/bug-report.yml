@@ -1,0 +1,84 @@
+name: Bug report
+description: Report a defect in the schemas, the profile content, the vectors or the validation tooling.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please check whether the finding is a **specification defect**
+        or a **conformance question**. A contract that fails a vector is not a bug in
+        this repository: it is the result the profile exists to produce. If you
+        believe the *requirement itself* is wrong — it contradicts the upstream
+        specification, or it is ambiguous — that is a defect here, and this is the
+        right place for it.
+
+        The relevant validator output is almost always the fastest way to make the
+        report actionable. Run `npm run validate` and include what it printed.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - A JSON schema rejects something it should accept, or accepts something it should reject
+        - Cross-reference validation misses a defect, or reports one that is not a defect
+        - A profile requirement contradicts or misreads the upstream specification
+        - A vector is wrong, ambiguous, or does not test what it claims to
+        - A validation entry point reports the wrong exit code
+        - Generated documentation is wrong or out of date
+        - Documentation describes behaviour the tooling does not have
+        - Something else
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Where
+      description: The file, or the profile identity the defect concerns.
+      placeholder: schema/vector.schema.json
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: >-
+        If the defect is a requirement that misreads the upstream text, quote the
+        upstream passage and say how the profile should read it instead. Cite the
+        revision you are reading.
+    validations:
+      required: true
+
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happens instead
+      description: Include the exact validator output, or the smallest document that demonstrates the defect.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >-
+        The commands you ran, from a clean checkout. `npm ci` then the entry point is
+        usually enough.
+      value: |
+        npm ci
+        npm run validate
+    validations:
+      required: true
+
+  - type: input
+    id: revision
+    attributes:
+      label: Revision
+      description: The commit you observed this at, so that the report is not lost when main moves on.
+      placeholder: a7265d8
+    validations:
+      required: true

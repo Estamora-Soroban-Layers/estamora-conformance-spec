@@ -1,0 +1,90 @@
+name: Improvement
+description: Propose a change to the specification data model, the tooling or the process.
+title: "improvement: "
+labels:
+  - improvement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This template is for changes to *how* Estamora describes conformance, rather
+        than to a requirement inside a profile. Adding a predicate kind, changing an
+        error classification, changing an exit code, or changing the review process
+        all belong here.
+
+        The bar is deliberately high in one specific way: **an addition to the data
+        model must be something the runner can execute and a profile author must need.**
+        A vocabulary that can express a requirement nobody can check is worse than a
+        smaller one, because it lets a profile look thorough while enforcing nothing.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - A schema needs a new field, type or constraint
+        - The vocabulary needs a new kind (predicate, invariant, failure, event)
+        - An error classification or exit code should change
+        - The versioning or compatibility policy should change
+        - The validation tooling should check something it does not check today
+        - The review or governance process should change
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: The requirement that cannot be expressed today
+      description: >-
+        Describe a real requirement, from a real specification, that the current
+        vocabulary cannot state or cannot state precisely. A concrete example is what
+        makes the proposal reviewable.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: How it is expressed today, and why that is insufficient
+      description: >-
+        If the requirement can be approximated with the current vocabulary, show the
+        approximation and say what a contract could do to pass it while violating the
+        requirement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed shape
+      description: >-
+        Sketch the schema change or the new kind. It does not have to be final; it
+        has to be concrete enough to critique.
+      render: yaml
+    validations:
+      required: true
+
+  - type: textarea
+    id: executability
+    attributes:
+      label: How a runner would evaluate it
+      description: >-
+        Say how the requirement could be checked against a deployed contract: what it
+        would read, what it would compare, and what a failure would look like. A
+        proposal that cannot answer this is describing documentation, not a
+        requirement.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Impact
+      options:
+        - label: >-
+            This changes what an existing profile requires, so it needs a profile
+            version change rather than an in-place edit.
+        - label: >-
+            This changes the shape of a document, so it needs a format version change.
+        - label: This is additive and changes no existing requirement.
