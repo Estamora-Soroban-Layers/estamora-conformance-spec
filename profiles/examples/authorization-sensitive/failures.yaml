@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=../../../schema/failure.schema.json
+failures:
+  - id: missing-spend-signature
+    category: missing_authorization
+    summary: A spend with no authorization from the debited account must be rejected.
+    description: >-
+      The call must fail and the state must be unchanged. This interface defines no
+      error codes, so the requirement is semantic: the runner asserts that the call
+      did not succeed and that nothing moved, not that it returned a particular
+      payload.
+    methods:
+      - spend
+    trigger: The account named in `from` has supplied no authorization for the invocation.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      A contract that moves value and reports success without consulting
+      authorization is indistinguishable from a correct contract under a
+      positive-only suite, which is the gap this requirement closes.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: wrong-spend-actor
+    category: wrong_actor
+    summary: A spend authorized by a different account must be rejected.
+    description: >-
+      The invocation carries a valid authorization, but it belongs to an account
+      other than the one named in `from`. This is the case a contract fails when it
+      verifies that some signature is present without verifying whose it is — the
+      mistake that moves funds out of an account that never agreed to the payment.
+    methods:
+      - spend
+    trigger: The authorization presented belongs to an account other than the `from` argument.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      Separating this from missing authorization is what makes the authorization
+      model useful. A single "unauthorized" category cannot tell a reader whether
+      the contract checked the actor or only the presence of a signature, and the
+      second mistake is the one that loses funds.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: spend-beyond-balance
+    category: insufficient_balance
+    summary: A spend larger than the available balance must be rejected.
+    description: >-
+      The call must fail and no balance may change. A contract that clamps the
+      amount, saturates at zero, or transfers a partial quantity passes every
+      positive vector while losing value for its users.
+    methods:
+      - spend
+    trigger: The `amount` argument exceeds the debited account's available balance.
+    expected:
+      outcome: failure
+      signal: either
+      state_effect: unchanged
+      events_emitted: none
+    error_codes:
+      policy: semantic_only
+      allowed: []
+    rationale: >-
+      Balancing around an insufficient balance instead of rejecting the call is the
+      classic way a contract passes a successful-path suite while being unable to
+      express its own limits. Stating the expected state effect as `unchanged` is
+      what makes the difference observable.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

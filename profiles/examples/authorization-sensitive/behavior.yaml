@@ -1,0 +1,101 @@
+# yaml-language-server: $schema=../../../schema/behavior.schema.json
+behaviors:
+  - id: authorized-spend-debits-owner
+    summary: An authorized spend lowers the owner's balance by exactly the requested amount.
+    description: >-
+      Stated as a delta against the balance read through the interface, so it holds
+      for every starting balance. A contract that debits a rounded amount, or debits
+      the balance and credits a different account, passes any check that only asks
+      whether the call succeeded.
+    method: spend
+    kind: success
+    preconditions:
+      - kind: greater_than
+        left:
+          kind: input
+          name: amount
+        right:
+          kind: literal
+          value: "0"
+    postconditions:
+      - kind: delta
+        target:
+          kind: read
+          method: limit
+          args:
+            - kind: input
+              name: from
+        direction: decrease
+        by:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events:
+      - spend
+    forbid_events: []
+    invariants:
+      - total-held-amount-is-unchanged
+    notes:
+      - >-
+        The conservation invariant is attached to this rule rather than asserted
+        separately, because the requirement only has content for a call that
+        actually moved value.
+
+  - id: spend-without-owner-signature-fails
+    summary: A spend the debited account has not authorized must fail and move nothing.
+    description: >-
+      Both rejection routes share one rule because their effect must be identical:
+      whether authorization is absent or merely belongs to another principal, no
+      balance may move and no spend event may be emitted. The distinction between
+      the routes is preserved in the failure requirements, where it can be reported
+      separately.
+    method: spend
+    kind: failure
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: limit
+          args:
+            - kind: input
+              name: from
+    expect_failures:
+      - missing-spend-signature
+      - wrong-spend-actor
+    expect_events: []
+    forbid_events:
+      - spend
+    invariants:
+      - rejected-spend-cannot-mutate
+    notes:
+      - >-
+        Forbidding the event matters as much as requiring unchanged state: a
+        contract that emits the spend event before checking authorization leaves
+        consumers with a payment that never happened.
+
+  - id: limit-of-unknown-owner-is-zero
+    summary: A network read of an account that holds nothing reports zero rather than failing.
+    description: >-
+      A balance query must never trap for a syntactically valid address, because
+      every consumer that displays a balance would otherwise have to special-case
+      the addresses it has never seen. Stating the bound over the read makes the
+      requirement observable without knowing the fixture.
+    method: limit
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: limit
+          args:
+            - kind: input
+              name: owner
+        right:
+          kind: literal
+          value: "0"
+    expect_failures: []
+    expect_events: []
+    forbid_events: []
+    invariants: []

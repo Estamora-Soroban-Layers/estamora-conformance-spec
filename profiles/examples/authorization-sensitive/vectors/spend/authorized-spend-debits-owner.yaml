@@ -1,0 +1,137 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: authorized-spend-debits-owner
+profile: authorization-sensitive
+profile_version: "0.1"
+title: An authorized spend debits the owner and credits the recipient by the same amount
+description: >-
+  Alice holds 400, Bob holds 100, and Alice authorizes a spend of 250 to Bob.
+  Afterwards Alice must hold 150 and Bob 350, the total must be unchanged, and
+  exactly one spend event must name the debit, the credit and the quantity. This
+  vector exercises the authorization dimension on the accepted path, which is what
+  makes the rejected-path vectors interpretable: without it, a contract that rejects
+  every call would pass them all.
+kind: authorization
+method: spend
+tags: [spend, authorization, positive, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The debited account, whose authorization the call requires and presents.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The credited account, which is not required to authorize anything.
+  balances:
+    alice: "400"
+    bob: "100"
+  allowances: []
+  total_supply: "500"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: false
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: owner-debited-by-amount
+      description: The debited account must fall by exactly the moved quantity.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: limit
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "150"
+    - id: recipient-credited-by-amount
+      description: The credited account must rise by exactly the same quantity.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: limit
+          args:
+            - kind: actor
+              ref: bob
+        right:
+          kind: literal
+          value: "350"
+    - id: total-held-unchanged
+      description: The sum of all balances must be unchanged by an ordinary spend.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: equal
+        left:
+          kind: sum
+          over: balances
+        right:
+          kind: literal
+          value: "500"
+  events:
+    required:
+      - event: spend
+        topics:
+          - kind: literal
+            value: spend
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: bob
+        data:
+          - kind: literal
+            value: "250"
+    forbidden: []
+  invariants:
+    - total-held-amount-is-unchanged
+
+assertions:
+  - id: recipient-differs-from-source
+    category: behavior
+    description: The credit must not be satisfied by leaving the debited account credited too.
+    predicate:
+      kind: not_equal
+      left:
+        kind: actor
+        ref: alice
+      right:
+        kind: actor
+        ref: bob
+
+rationale: >-
+  Establishes the accepted authorization path and the value movement that goes with
+  it. The rejected-path vectors can only be interpreted once this one passes, because
+  a contract that rejects every invocation satisfies "the unauthorized call failed"
+  trivially.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

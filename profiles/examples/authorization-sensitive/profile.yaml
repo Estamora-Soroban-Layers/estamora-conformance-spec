@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=../../../schema/profile.schema.json
+#
+# A worked example whose subject is authorization.
+#
+# The interface is small on purpose so that the authorization model is the only
+# thing worth reading: one value-moving method whose actor is an argument, one
+# read-only method with no actor at all, and both rejection routes for the
+# value-moving call. It validates.
+estamora_spec_version: "1.0"
+
+profile:
+  id: authorization-sensitive
+  version: "0.1"
+  title: Authorization-Sensitive Custody Interface
+  status: experimental
+  summary: A two-method custody interface used to illustrate how Estamora models authorization.
+  description: >-
+    The example demonstrates the distinction the authorization model exists to
+    make. A caller who supplies no authorization is rejected as missing
+    authorization; a caller who supplies valid authorization belonging to a
+    different account is rejected as a wrong actor. The two are separate failure
+    requirements and separate failure categories, because a contract that checks
+    only that *a* signature is present passes the first case and fails the second,
+    and only a model that names them separately can say which happened.
+
+    The example also shows a rule with no actor, for which the authorization model
+    requires an explicit statement that nothing must be authorized rather than an
+    omission that happens to look the same.
+
+  license: Apache-2.0
+
+  specification:
+    name: EXAMPLE-0003
+    title: Authorization-Sensitive Custody Interface
+    version: "0.1"
+    status: draft
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+    updated: "2026-09-15"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        Both methods are required. A contract that exposes only `spend` cannot be
+        certified against this profile, because the read-only method is what makes
+        the effect of a spend observable without trusting the event log.
+      - >-
+        Replay sensitivity is stated for `spend` and denied for `limit`. The
+        distinction is part of the interface, not an implementation detail: a
+        profile that left it unstated would be unable to say whether a repeated
+        invocation is a defect.
+
+  provenance:
+    source: composite
+    derived_from: Estamora example set, written for documentation purposes
+    interpretation_notes:
+      - >-
+        The interface is invented for this example, so every requirement here is
+        an interpretation rather than a transcription of an upstream text. It is
+        recorded explicitly so that the absence of an upstream citation is a
+        documented choice.
+      - >-
+        `spend` names its actor through the `from` argument rather than through
+        the invoker. Deriving the actor from the invocation would leave nothing to
+        state about authorization coverage, which is the dimension this example
+        exists to demonstrate.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - spend
+  shared_vectors:
+    - common

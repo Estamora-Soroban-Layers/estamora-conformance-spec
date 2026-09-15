@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=../../../schema/invariant.schema.json
+invariants:
+  - id: total-held-amount-is-unchanged
+    title: A spend does not change the total held across all accounts
+    kind: conservation
+    severity: error
+    summary: Moving value between holders must not create or destroy any of it.
+    description: >-
+      Taken across the whole fixture balance set rather than across the two
+      accounts the operation names, so a contract that credits a third account,
+      mints a remainder into a fee address, or loses precision on a large amount is
+      caught as well. The rule has content precisely because it is aggregate: every
+      individual balance can look plausible while the sum drifts.
+    scope:
+      methods:
+        - spend
+      outcomes:
+        - success
+    resource: balances
+    rationale: >-
+      A custody interface whose total drifts on ordinary spends has a silently
+      inflating or deflating ledger. Every balance shown to a user becomes wrong in
+      aggregate even though each individual spend looks correct, and the error
+      stays invisible until somebody reconciles the ledger against the events.
+    references:
+      - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+
+  - id: rejected-spend-cannot-mutate
+    title: A rejected spend cannot change protected state
+    kind: authorization_blocks_mutation
+    severity: error
+    summary: When authorization is missing or wrong, no balance may change and no value may move.
+    description: >-
+      Scoped to the failure outcome of `spend`, so it is evaluated only after a call
+      that must be rejected. A contract that performs the debit and then reports an
+      authorization failure has, in practice, taken the funds while telling the
+      caller it did not, and every consumer that trusts the error path reconstructs
+      a different ledger from the contract's own.
+    scope:
+      methods:
+        - spend
+      outcomes:
+        - failure
+    rationale: >-
+      The authorization model separates "no authorization" from "wrong actor" so
+      that a contract which only checks that a signature exists is identified. This
+      invariant covers the step after that check: having decided to reject the call,
+      the contract must also leave the state alone.

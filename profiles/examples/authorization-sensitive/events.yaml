@@ -1,0 +1,64 @@
+# yaml-language-server: $schema=../../../schema/event.schema.json
+events:
+  - id: spend
+    name: spend
+    requirement: required
+    summary: Exactly one spend event must describe a successful value movement.
+    description: >-
+      The event is the only record of *who initiated* the movement; the balances
+      alone cannot distinguish a spend from any other way value might move. A
+      contract that settles without emitting it, or emits it twice, leaves
+      consumers unable to reconstruct the ledger from events.
+    occurrence: on_success
+    topics:
+      - index: 0
+        type:
+          kind: prim
+          name: symbol
+        binding:
+          kind: literal
+          value: spend
+        semantics: The event discriminator, which distinguishes this event from any other the contract emits.
+      - index: 1
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: from
+        semantics: The debited account, which must be the account whose authorization the call required.
+      - index: 2
+        type:
+          kind: prim
+          name: address
+        binding:
+          kind: input
+          name: to
+        semantics: The credited account, which must be the account the balance assertion observes rising.
+    data:
+      format: map
+      fields:
+        - name: amount
+          type:
+            kind: prim
+            name: i128
+          binding:
+            kind: input
+            name: amount
+          semantics: The moved quantity, which must equal the debit and the credit exactly.
+          optional: false
+    cardinality:
+      min: 1
+      max: 1
+    ordering: []
+    correlations:
+      - total-held-amount-is-unchanged
+    notes:
+      - >-
+        The data format is fixed as a map for this example, in contrast to the
+        scalar form used by the minimal-token example, to show that a profile may
+        pin either encoding when the interface defines exactly one.
+      - >-
+        The correlation to the conservation invariant is what makes a wrong amount
+        detectable: an event that states a quantity the balances do not agree with
+        is caught by the aggregate rather than by the payload alone.

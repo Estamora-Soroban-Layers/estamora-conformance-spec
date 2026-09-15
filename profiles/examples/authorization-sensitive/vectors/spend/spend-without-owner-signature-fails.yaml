@@ -1,0 +1,112 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: spend-without-owner-signature-fails
+profile: authorization-sensitive
+profile_version: "0.1"
+title: A spend the owner has not authorized fails and moves nothing
+description: >-
+  Alice holds 400 and the call presents no authorization from her. The invocation
+  must be rejected, her balance must be unchanged, and no spend event may be
+  emitted. This vector is mandatory for the profile: a suite of only successful
+  calls cannot distinguish a contract that checks authorization from one that never
+  looks at it, because both succeed when the caller happens to be authorized.
+kind: negative
+method: spend
+tags: [spend, negative, authorization, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The account that must authorize the spend, and deliberately does not.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The intended recipient, who must receive nothing.
+  balances:
+    alice: "400"
+    bob: "100"
+  allowances: []
+  ledger:
+    sequence: 1000
+    timestamp: "2026-09-15T12:00:00Z"
+  authorization:
+    alice: false
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: []
+  expected: rejected
+
+expected:
+  outcome: failure
+  failure: missing-spend-signature
+  state_assertions:
+    - id: owner-not-debited
+      description: A rejected spend must leave the debited account untouched.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: limit
+          args:
+            - kind: actor
+              ref: alice
+    - id: recipient-not-credited
+      description: A rejected spend must not credit the intended recipient either.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: limit
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden:
+      - spend
+  invariants:
+    - rejected-spend-cannot-mutate
+
+assertions:
+  - id: debit-did-not-happen
+    category: behavior
+    description: The rejected call must not have lowered the debited account's balance.
+    predicate:
+      kind: equal
+      left:
+        kind: read
+        method: limit
+        args:
+          - kind: actor
+            ref: alice
+      right:
+        kind: literal
+        value: "400"
+
+rationale: >-
+  A contract that moves the value and reports failure, or that emits the spend event
+  before checking authorization, leaves every consumer that trusts the error path
+  reconstructing a different ledger from the contract's own. Pairing the rejection
+  with unchanged state on both accounts and an absent event makes either mistake
+  observable.
+references:
+  - https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec

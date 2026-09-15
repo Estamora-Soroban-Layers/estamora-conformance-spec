@@ -1,0 +1,95 @@
+# yaml-language-server: $schema=../../../schema/method.schema.json
+methods:
+  - id: spend
+    name: spend
+    requirement: required
+    summary: Move an exact amount from one account to another on the owner's authority.
+    description: >-
+      The only method that changes a balance. It must be authorized by the account
+      named in `from`, and that authorization must cover `from` itself. The value
+      must move without loss: the debited amount and the credited amount are the
+      same quantity, and any difference is a violation rather than a fee.
+    args:
+      - name: from
+        type:
+          kind: prim
+          name: address
+        semantics: The account that is debited, and the account that must authorize the call.
+        authorization:
+          required: true
+          semantics: >-
+            The authorization presented must belong to this address. A signature
+            from the destination or from a third party does not satisfy the
+            requirement, because the debit changes this account's balance.
+      - name: to
+        type:
+          kind: prim
+          name: address
+        semantics: The account that is credited. It is not required to authorize the call.
+        authorization:
+          required: false
+          semantics: >-
+            The recipient gains value and parts with none, so requiring its
+            authorization would let a recipient block an incoming payment. That is
+            a design decision this profile states rather than leaves implicit.
+      - name: amount
+        type:
+          kind: prim
+          name: i128
+        semantics: The exact quantity to move. Must be strictly positive.
+    returns:
+      type:
+        kind: prim
+        name: void
+      semantics: No value is returned; the effect is observable through limit and the spend event.
+    mutability: mutating
+    invocation: invoke
+    authorization:
+      - owner-authorizes-spend
+    events:
+      - spend
+    failures:
+      - missing-spend-signature
+      - wrong-spend-actor
+      - spend-beyond-balance
+    behaviors:
+      - authorized-spend-debits-owner
+      - spend-without-owner-signature-fails
+    notes:
+      - >-
+        The invocation is not idempotent and the rule is replay sensitive: two
+        identical authorized calls move the amount twice, and a contract that
+        treats the second as a replay would silently drop a legitimate payment.
+
+  - id: limit
+    name: limit
+    requirement: required
+    summary: Report the balance available to an account.
+    description: >-
+      A read-only query that must succeed for any valid address, including one that
+      holds nothing, which must report zero rather than trapping.
+    args:
+      - name: owner
+        type:
+          kind: prim
+          name: address
+        semantics: The account whose available balance is read. Any account may read any balance.
+        authorization:
+          required: false
+          semantics: >-
+            The value is public. Requiring authorization would make a balance
+            unreadable by anyone but its holder, which breaks every consumer that
+            has to display it.
+    returns:
+      type:
+        kind: prim
+        name: i128
+      semantics: The exact available balance, or zero when the address holds nothing.
+    mutability: readonly
+    invocation: read_only
+    authorization:
+      - limit-requires-no-authorization
+    events: []
+    failures: []
+    behaviors:
+      - limit-of-unknown-owner-is-zero
