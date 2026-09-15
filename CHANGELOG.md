@@ -84,6 +84,15 @@ tooling that enforces it, and the first profile built on it.
   whose community documents are empty, or whose workflows are missing — a check
   that no automation runs is not a check.
 
+- **The reference documentation set** under `docs/`: seventeen documents that
+  define the model normatively — the introduction and the architecture, the
+  shared terminology, profile authoring, and one document for each conformance
+  dimension (behaviour, authorization, events, state, invariants, failures and
+  vectors) — together with versioning, compatibility, certification, security and
+  governance. The README indexes every one of them, and the layout suite fails if
+  a document is missing, empty, unreachable from the README, or linked to a path
+  that does not resolve.
+
 ### Notes on scope
 
 - The SEP-41 profile is declared `draft`. Upstream SEP-0041 is itself a draft
