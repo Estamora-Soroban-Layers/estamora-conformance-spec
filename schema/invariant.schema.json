@@ -1,0 +1,239 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/invariant.schema.json",
+  "title": "Estamora Invariants",
+  "description": "An invariant is a property that must hold across operations rather than a property of one call. Invariants are named, scoped and independently reported so that a vector can reuse them and a report can say which invariant broke rather than which call failed. They are deliberately first-class: expressing \"balances are conserved\" as a comment would make it unenforceable and unreviewable. Every invariant carries a rationale, because an unexplained invariant is one nobody can safely remove.",
+  "type": "object",
+  "required": ["invariants"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "invariants": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/invariantDefinition"
+      }
+    }
+  },
+  "$defs": {
+    "invariantKind": {
+      "type": "string",
+      "enum": [
+        "conservation",
+        "state_unchanged",
+        "authorization_blocks_mutation",
+        "monotonic",
+        "bounds",
+        "predicate"
+      ],
+      "description": "The check family. `conservation` asserts an aggregate across a resource set is unchanged, `state_unchanged` asserts no mutation, `authorization_blocks_mutation` asserts a rejected caller cannot change protected state, `monotonic` asserts a direction of movement, `bounds` asserts a value stays within limits, and `predicate` defers to an arbitrary predicate."
+    },
+    "invariantScope": {
+      "type": "object",
+      "description": "Where the invariant must hold. Scoping is mandatory: \"balances are conserved\" is true of a transfer and false of a mint, so an unscoped invariant would be wrong for at least one operation in the profile.",
+      "required": ["methods", "outcomes"],
+      "additionalProperties": false,
+      "properties": {
+        "methods": {
+          "type": "array",
+          "description": "Method ids the invariant applies to. The wildcard `*` means every method declared by the profile.",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(\\*|[a-z0-9]+(?:-[a-z0-9]+)*)$"
+          }
+        },
+        "outcomes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["success", "failure"]
+          }
+        }
+      }
+    },
+    "invariantDefinition": {
+      "type": "object",
+      "required": ["id", "title", "kind", "severity", "summary", "scope", "rationale"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 120
+        },
+        "kind": {
+          "$ref": "#/$defs/invariantKind"
+        },
+        "severity": {
+          "type": "string",
+          "enum": ["error", "warning"],
+          "description": "Whether violating the invariant makes a contract non-conformant or is recorded as a warning. `warning` exists for properties the upstream specification states as SHOULD rather than MUST."
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 300
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "scope": {
+          "$ref": "#/$defs/invariantScope"
+        },
+        "resource": {
+          "$ref": "profile.schema.json#/$defs/identifier",
+          "description": "Resource set the invariant ranges over, e.g. `balances`. Required for `conservation` and `monotonic`, forbidden otherwise."
+        },
+        "direction": {
+          "type": "string",
+          "enum": ["non_increasing", "non_decreasing"],
+          "description": "Expected direction of movement. Required for `monotonic`, forbidden otherwise."
+        },
+        "predicate": {
+          "$ref": "assertion.schema.json#/$defs/predicate",
+          "description": "The condition asserted. Required for `predicate` and `bounds`."
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 2000,
+          "description": "Why the invariant holds and what breaks if it does not. Required because an unexplained invariant cannot be reviewed, and unreviewable requirements do not belong in a normative document."
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          },
+          "description": "Upstream citations supporting the invariant."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": ["conservation", "monotonic"]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "resource": {
+                "type": "string"
+              }
+            },
+            "required": ["resource"]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "kind": {
+                  "enum": ["conservation", "monotonic"]
+                }
+              },
+              "required": ["kind"]
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "resource": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "monotonic"
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "direction": {
+                "enum": ["non_increasing", "non_decreasing"]
+              }
+            },
+            "required": ["direction"]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "kind": {
+                  "const": "monotonic"
+                }
+              },
+              "required": ["kind"]
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "direction": false
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": ["predicate", "bounds"]
+              }
+            },
+            "required": ["kind"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "predicate": {
+                "$ref": "assertion.schema.json#/$defs/predicate"
+              }
+            },
+            "required": ["predicate"]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "kind": {
+                  "enum": ["predicate", "bounds"]
+                }
+              },
+              "required": ["kind"]
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "predicate": false
+            }
+          }
+        }
+      ]
+    }
+  }
+}
