@@ -58,10 +58,49 @@ const PROGRAM = "estamora-release-check";
 /** Files a release must publish. */
 const REQUIRED_DOCUMENTS = [
   "LICENSE",
+  "README.md",
   "CHANGELOG.md",
   "VERSIONING.md",
+  "CONTRIBUTING.md",
+  "GOVERNANCE.md",
+  "SECURITY.md",
   "package.json",
   "tsconfig.json",
+] as const;
+
+/** Workflows a release must publish. */
+const REQUIRED_WORKFLOWS = [
+  "ci.yml",
+  "schema-validation.yml",
+  "profile-validation.yml",
+  "docs.yml",
+  "release.yml",
+] as const;
+
+/**
+ * Minimum size, in bytes, of a prose document that is not a placeholder.
+ *
+ * A stub that satisfies a "the file exists" check is worse than a missing file,
+ * because it looks like documentation. These floors are deliberately far below the
+ * length of the documents they guard: they catch a placeholder, not a short
+ * revision.
+ */
+const PROSE_FLOOR: Readonly<Record<string, number>> = {
+  "README.md": 4000,
+  "CHANGELOG.md": 1000,
+  "VERSIONING.md": 1000,
+  "CONTRIBUTING.md": 1000,
+  "GOVERNANCE.md": 1000,
+  "SECURITY.md": 1000,
+};
+
+/** Level-2 headings `README.md` must carry, because a reader navigates by them. */
+const README_SECTIONS = [
+  "## The question Estamora answers",
+  "## What is in this repository",
+  "## How the runner consumes this repository",
+  "## Authoring a profile",
+  "## What Estamora does not do",
 ] as const;
 
 /** Directories a release must publish. */
@@ -130,6 +169,7 @@ function main(argv: readonly string[]): number {
   checkSchemaInventory(bag);
   checkProfiles(bag, changelogText);
   checkPlaceholders(bag);
+  checkDocumentation(bag);
   checkLicense(bag);
 
   note(`${tally(releases.length, releases.length)} release entr(ies) recorded in CHANGELOG.md`);
@@ -169,7 +209,58 @@ function checkLayout(bag: DiagnosticBag): boolean {
     }
   }
 
+  for (const workflow of REQUIRED_WORKFLOWS) {
+    const path = join(REPO_ROOT, ".github", "workflows", workflow);
+    if (!existsSync(path) || statSync(path).size === 0) {
+      bag.error(
+        ErrorCode.RELEASE_ERROR,
+        `A release must publish the ${workflow} workflow; a check that no automation runs is not a check.`,
+        path,
+      );
+      complete = false;
+    }
+  }
+
   return complete;
+}
+
+/**
+ * Refuse to ship a document that is a placeholder wearing a filename.
+ *
+ * A stub that satisfies "the file exists" is worse than a missing file, because it
+ * looks like documentation. The floors are far below the length of the documents they
+ * guard, so they catch an empty promise rather than a short revision.
+ */
+function checkDocumentation(bag: DiagnosticBag): void {
+  for (const [document, floor] of Object.entries(PROSE_FLOOR)) {
+    const path = join(REPO_ROOT, document);
+    if (!existsSync(path)) {
+      continue;
+    }
+    const size = statSync(path).size;
+    if (size < floor) {
+      bag.error(
+        ErrorCode.RELEASE_ERROR,
+        `${document} is ${String(size)} bytes, below the ${String(floor)}-byte floor for a released document. A stub that names a document without containing one is worse than an absent file.`,
+        path,
+      );
+    }
+  }
+
+  const readmePath = join(REPO_ROOT, "README.md");
+  if (!existsSync(readmePath)) {
+    return;
+  }
+  const readme = readFileSync(readmePath, "utf8");
+  for (const section of README_SECTIONS) {
+    if (!readme.includes(section)) {
+      bag.error(
+        ErrorCode.RELEASE_ERROR,
+        `README.md does not contain the ${JSON.stringify(section)} section, so a reader cannot find it.`,
+        readmePath,
+      );
+    }
+  }
 }
 
 /** Read the repository version declared by `package.json`. */
