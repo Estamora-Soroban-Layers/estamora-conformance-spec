@@ -1,0 +1,501 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/vector.schema.json",
+  "title": "Estamora Test Vector",
+  "description": "A test vector is a first-class specification artifact, not a test fixture in a runner-specific format. It describes a deterministic world, one operation against it, and exactly what must be observed. Vectors must be declarative because two independent implementations, in different languages, must be able to execute the same vector and reach the same verdict; a vector that embedded runner logic would make that impossible. The same document shape is used by the shared library, including the profile-independent scenarios under `vectors/common/`, and by profile bundles, so a runner needs exactly one vector parser.",
+  "type": "object",
+  "required": [
+    "id",
+    "profile",
+    "profile_version",
+    "title",
+    "description",
+    "kind",
+    "method",
+    "tags",
+    "fixtures",
+    "inputs",
+    "authorization",
+    "expected",
+    "assertions",
+    "rationale",
+    "references"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+      "minLength": 4,
+      "maxLength": 96,
+      "description": "Globally unique vector identifier across the shared library and every profile bundle."
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^(\\*|[a-z0-9]+(?:-[a-z0-9]+)*)$",
+      "description": "Profile this vector belongs to, or `*` for a profile-independent scenario that every profile of the same family consumes."
+    },
+    "profile_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+(?:\\.\\d+)?$",
+      "description": "Profile version the vector was written against. For a `*` vector this is the Estamora format version."
+    },
+    "title": {
+      "type": "string",
+      "minLength": 5,
+      "maxLength": 160
+    },
+    "description": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 4000,
+      "description": "What the vector establishes. Required, because a vector whose purpose is not written down becomes unmaintainable the moment its original author moves on."
+    },
+    "kind": {
+      "type": "string",
+      "enum": ["positive", "negative", "boundary", "authorization", "event", "state", "invariant"],
+      "description": "The class of property the vector probes. `negative`, `boundary`, `authorization`, `event`, `state` and `invariant` vectors are all mandatory for a complete profile; a suite of only positive vectors cannot establish behavioural conformance."
+    },
+    "method": {
+      "$ref": "profile.schema.json#/$defs/identifier",
+      "description": "Id of the method under test."
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      },
+      "description": "Free-form labels used to select subsets of a suite in CI."
+    },
+    "fixtures": {
+      "$ref": "#/$defs/fixtures"
+    },
+    "inputs": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_]{0,63}$"
+      },
+      "additionalProperties": {
+        "$ref": "assertion.schema.json#/$defs/valueExpr"
+      },
+      "description": "Argument name to value. Must cover every required argument of the method under test; the cross-reference validator enforces that, and also rejects inputs naming arguments the method does not declare."
+    },
+    "authorization": {
+      "$ref": "#/$defs/authorizationPlan"
+    },
+    "expected": {
+      "$ref": "#/$defs/expectedOutcome"
+    },
+    "assertions": {
+      "type": "array",
+      "items": {
+        "$ref": "assertion.schema.json#/$defs/assertion"
+      },
+      "description": "Additional independently reported checks. The runner reports each with its own id rather than collapsing them into one boolean."
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20,
+      "maxLength": 2000,
+      "description": "Why this vector exists and which requirement it protects against regression."
+    },
+    "references": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "uri",
+        "pattern": "^https://"
+      }
+    }
+  },
+  "$defs": {
+    "integerString": {
+      "type": "string",
+      "pattern": "^(0|-?[1-9][0-9]*)$",
+      "description": "An exact integer written as a string. Amounts are never JSON numbers because an i128 does not survive a round trip through a double-precision float, and a rounded expected balance would silently weaken every assertion that reads it."
+    },
+    "fixtureActor": {
+      "type": "object",
+      "required": ["name", "kind"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["account", "contract"]
+        },
+        "ref": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+/[a-z0-9-]+/[a-z0-9-]+$",
+          "description": "Optional link into the shared fixture library, e.g. `common/addresses/alice`, so the same address is used across profiles instead of being invented per vector."
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 500
+        }
+      }
+    },
+    "fixtureAllowance": {
+      "type": "object",
+      "required": ["from", "spender", "amount"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "spender": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "amount": {
+          "$ref": "#/$defs/integerString"
+        },
+        "live_until_ledger": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Ledger at which the allowance expires. Omitted means the fixture leaves expiry to the implementation's default."
+        }
+      }
+    },
+    "fixtures": {
+      "type": "object",
+      "description": "The deterministic world the operation runs against. Every input must be stated, because a vector that depends on ambient state cannot be reproduced on another machine.",
+      "required": ["actors", "balances", "allowances", "ledger", "authorization"],
+      "additionalProperties": false,
+      "properties": {
+        "actors": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/fixtureActor"
+          }
+        },
+        "balances": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/integerString"
+          },
+          "description": "Opening balance per fixture actor name."
+        },
+        "allowances": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fixtureAllowance"
+          }
+        },
+        "total_supply": {
+          "$ref": "#/$defs/integerString"
+        },
+        "ledger": {
+          "type": "object",
+          "required": ["sequence", "timestamp"],
+          "additionalProperties": false,
+          "properties": {
+            "sequence": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Ledger sequence the operation executes in. Fixed so that expiry-sensitive behaviour is reproducible."
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Ledger close time supplied to the execution environment."
+            }
+          }
+        },
+        "authorization": {
+          "type": "object",
+          "propertyNames": {
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Whether each actor holds token-level authorization. Distinct from transaction authorization, because a contract may be authorized to move value and still fail its own authorization flag."
+        }
+      }
+    },
+    "authorizationPlan": {
+      "type": "object",
+      "description": "Which actors sign the invocation, and what that is expected to achieve. Modelled explicitly so that authorized success, unauthorized failure and wrong-actor failure are three separately testable outcomes rather than one.",
+      "required": ["actors", "expected"],
+      "additionalProperties": false,
+      "properties": {
+        "actors": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          }
+        },
+        "expected": {
+          "type": "string",
+          "enum": ["accepted", "rejected", "not_required"]
+        },
+        "substituted_for": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Actors whose authorization is deliberately replaced by another actor, used to construct wrong-actor cases. Must be non-empty when `expected` is `rejected`."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "expected": {
+                "const": "not_required"
+              }
+            },
+            "required": ["expected"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "actors": {
+                "type": "array",
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "stateResourceRef": {
+      "title": "State resource reference",
+      "type": "object",
+      "description": "Identifies the piece of contract state an assertion reads. Components of the operation that define a balance or an allowance are named so that a state assertion can be checked without the runner guessing which account it refers to.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "account"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "balance"
+            },
+            "account": {
+              "$ref": "profile.schema.json#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "from", "spender"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "allowance"
+            },
+            "from": {
+              "$ref": "profile.schema.json#/$defs/identifier"
+            },
+            "spender": {
+              "$ref": "profile.schema.json#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "total_supply"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "ledger_sequence"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name", "read"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "custom"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "description": "Custom resource name, which must be declared by the profile that consumes the vector."
+            },
+            "read": {
+              "$ref": "assertion.schema.json#/$defs/valueExpr"
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "stateAssertion": {
+      "type": "object",
+      "required": ["id", "resource", "predicate"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        },
+        "resource": {
+          "$ref": "#/$defs/stateResourceRef"
+        },
+        "predicate": {
+          "$ref": "assertion.schema.json#/$defs/predicate"
+        }
+      }
+    },
+    "eventExpectation": {
+      "type": "object",
+      "description": "A concrete expected event, matched against the observation log. Values are expressions rather than literals so that an expectation can refer to the actual transfer amount instead of restating it.",
+      "required": ["event", "topics", "data"],
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "topics": {
+          "type": "array",
+          "items": {
+            "$ref": "assertion.schema.json#/$defs/valueExpr"
+          }
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "assertion.schema.json#/$defs/valueExpr"
+          }
+        }
+      }
+    },
+    "expectedOutcome": {
+      "type": "object",
+      "required": ["outcome", "state_assertions", "events", "invariants"],
+      "additionalProperties": false,
+      "properties": {
+        "outcome": {
+          "type": "string",
+          "enum": ["success", "failure"]
+        },
+        "failure": {
+          "$ref": "profile.schema.json#/$defs/identifier",
+          "description": "Id of the `failures.yaml` entry this vector must produce. Required when the outcome is failure, so that a vector can never merely assert that something went wrong."
+        },
+        "returns": {
+          "$ref": "assertion.schema.json#/$defs/valueExpr",
+          "description": "Expected return value. Omitted for methods whose return type is void."
+        },
+        "state_assertions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/stateAssertion"
+          }
+        },
+        "events": {
+          "type": "object",
+          "required": ["required", "forbidden"],
+          "additionalProperties": false,
+          "properties": {
+            "required": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/eventExpectation"
+              }
+            },
+            "forbidden": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "$ref": "profile.schema.json#/$defs/identifier"
+              }
+            }
+          }
+        },
+        "invariants": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "failure"
+              }
+            },
+            "required": ["outcome"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "failure": {
+                "$ref": "profile.schema.json#/$defs/identifier"
+              },
+              "events": {
+                "type": "object",
+                "properties": {
+                  "required": {
+                    "type": "array",
+                    "maxItems": 0,
+                    "description": "A vector that expects failure cannot also demand an event, because the operation must not have produced one."
+                  }
+                }
+              }
+            },
+            "required": ["failure"]
+          }
+        },
+        {
+          "if": {
+            "not": {
+              "properties": {
+                "outcome": {
+                  "const": "failure"
+                }
+              },
+              "required": ["outcome"]
+            }
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "failure": false
+            },
+            "description": "Only a failing outcome may name a failure. Allowing it on a success vector would let a vector assert both that a call succeeded and that it failed."
+          }
+        }
+      ]
+    }
+  }
+}
