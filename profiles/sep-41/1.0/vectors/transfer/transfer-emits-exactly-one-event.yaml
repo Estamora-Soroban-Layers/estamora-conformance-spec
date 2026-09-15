@@ -1,0 +1,111 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: transfer-emits-exactly-one-event
+profile: sep-41
+profile_version: "1.0"
+title: A transfer emits exactly one transfer event and no other value event
+description: >-
+  Alice sends 250 to Bob. The transfer event must carry the discriminator, the
+  sender and the recipient in that topic order, and a data payload whose amount is
+  the amount that was actually transferred. The approve, burn, mint and clawback
+  events must be absent. This vector is recorded against the event dimension
+  because the payload is the only record downstream indexers have, and a movement
+  reported twice, or not at all, leaves them wrong even when the contract's own
+  storage is correct.
+kind: event
+method: transfer
+tags: [transfer, event, positive]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The sender named in the event's first address topic.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The recipient named in the event's second address topic.
+  balances:
+    alice: "1000"
+    bob: "500"
+  allowances: []
+  total_supply: "1500"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: sender-debited
+      description: The event amount must correspond to a real balance reduction.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        direction: decrease
+        by:
+          kind: literal
+          value: "250"
+  events:
+    required:
+      - event: transfer
+        topics:
+          - kind: literal
+            value: transfer
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: bob
+        data:
+          - kind: input
+            name: amount
+    forbidden: [approve, burn, mint, clawback]
+  invariants: [balances-conserved-by-transfer]
+
+assertions:
+  - id: event-amount-equals-input-amount
+    category: event
+    description: The amount reported in the event must be the amount the caller supplied.
+    predicate:
+      kind: equal
+      left:
+        kind: input
+        name: amount
+      right:
+        kind: literal
+        value: "250"
+
+rationale: >-
+  The event carries two independent claims: which accounts moved and how much. The
+  amount is bound to the operation's own argument rather than to a literal, so the
+  expectation states that the event agrees with the call rather than merely
+  repeating a number. Forbidding the other value events catches a contract that
+  reports one movement under two names.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
