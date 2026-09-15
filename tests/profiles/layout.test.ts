@@ -139,6 +139,7 @@ describe("top-level layout", () => {
     expect(files(join(github, "workflows")).sort()).toEqual([
       "ci.yml",
       "docs.yml",
+      "pages.yml",
       "profile-validation.yml",
       "release.yml",
       "schema-validation.yml",

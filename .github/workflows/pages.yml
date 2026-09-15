@@ -1,0 +1,102 @@
+name: Publish the documentation site
+
+# A specification repository whose documents can only be read after cloning them is a
+# specification nobody reads, and this one has a second reason to be published: the canonical
+# `$id` of every JSON Schema is a URL on this site. Until the site existed, those `$id`s named
+# a host that did not resolve, so a consumer's validator could not fetch the schema it was
+# being asked to resolve a `$ref` against -- which is the difference between a machine-readable
+# specification and one that can only be checked from inside a checkout.
+#
+# The site is not only the prose. `scripts/build-docs-site.sh` copies `schema/` and `profiles/`
+# into the build beside the rendered pages, and that copy is what makes the `$id`s and the
+# profile identities resolve.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "schema/**"
+      - "profiles/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "scripts/build-docs-site.sh"
+      - "scripts/check-doc-links.py"
+      - "*.md"
+      - ".github/workflows/pages.yml"
+  pull_request:
+    paths:
+      - "docs/**"
+      - "schema/**"
+      - "profiles/**"
+      - "mkdocs.yml"
+      - "requirements-docs.txt"
+      - "scripts/build-docs-site.sh"
+      - "scripts/check-doc-links.py"
+      - "*.md"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: requirements-docs.txt
+
+      - name: Install the documentation toolchain
+        run: pip install --disable-pip-version-check -r requirements-docs.txt
+
+      # One entry point for CI and for a contributor. It checks every relative link against
+      # the repository, renders `docs/`, and copies the normative trees in beside the pages.
+      # It asserts that all three happened, so a site that built with the prose present and
+      # the schemas absent fails here rather than being published.
+      - name: Build the site
+        run: ./scripts/build-docs-site.sh site
+
+      # A pull request builds the site and stops. Deploying from a pull request would publish
+      # an unreviewed revision over the normative `$id`s that consumers resolve.
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Upload the site
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    name: Deploy the site
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # Granted per job rather than workflow-wide: only this job publishes, and it publishes
+      # through an OIDC token rather than a stored secret.
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
