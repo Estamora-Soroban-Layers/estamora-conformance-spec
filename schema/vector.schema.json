@@ -77,14 +77,13 @@
     },
     "inputs": {
       "type": "object",
-      "minProperties": 1,
       "propertyNames": {
         "pattern": "^[a-z][a-z0-9_]{0,63}$"
       },
       "additionalProperties": {
         "$ref": "assertion.schema.json#/$defs/valueExpr"
       },
-      "description": "Argument name to value. Must cover every required argument of the method under test; the cross-reference validator enforces that, and also rejects inputs naming arguments the method does not declare."
+      "description": "Argument name to value. An empty object is correct for a method that takes no arguments, such as a metadata read. The cross-reference validator requires exact coverage of the method's declared arguments in both directions, which is stricter than a minimum count would be and is what makes the vector deterministic."
     },
     "authorization": {
       "$ref": "#/$defs/authorizationPlan"
@@ -408,6 +407,10 @@
           "$ref": "profile.schema.json#/$defs/identifier",
           "description": "Id of the `failures.yaml` entry this vector must produce. Required when the outcome is failure, so that a vector can never merely assert that something went wrong."
         },
+        "failure_category": {
+          "$ref": "failure.schema.json#/$defs/failureCategory",
+          "description": "Semantic failure category, used instead of `failure` by profile-independent vectors declared against the wildcard profile. A wildcard vector belongs to no bundle and therefore cannot name a profile's own failure definition, but the failure categories are Estamora-level vocabulary that every profile shares, so a wildcard vector can still say precisely why a call must fail."
+        },
         "returns": {
           "$ref": "assertion.schema.json#/$defs/valueExpr",
           "description": "Expected return value. Omitted for methods whose return type is void."
@@ -458,6 +461,26 @@
           },
           "then": {
             "type": "object",
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "failure": {
+                    "$ref": "profile.schema.json#/$defs/identifier"
+                  }
+                },
+                "required": ["failure"]
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "failure_category": {
+                    "$ref": "failure.schema.json#/$defs/failureCategory"
+                  }
+                },
+                "required": ["failure_category"]
+              }
+            ],
             "properties": {
               "failure": {
                 "$ref": "profile.schema.json#/$defs/identifier"
@@ -472,8 +495,7 @@
                   }
                 }
               }
-            },
-            "required": ["failure"]
+            }
           }
         },
         {
@@ -490,7 +512,8 @@
           "then": {
             "type": "object",
             "properties": {
-              "failure": false
+              "failure": false,
+              "failure_category": false
             },
             "description": "Only a failing outcome may name a failure. Allowing it on a success vector would let a vector assert both that a call succeeded and that it failed."
           }
