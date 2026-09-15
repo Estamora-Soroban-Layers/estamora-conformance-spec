@@ -8,13 +8,14 @@
  * is the only way a structural change gets noticed before release.
  */
 
-import { readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { readdirSync, readFileSync, statSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
   CHANGELOG_PATH,
   discoverProfileDirectories,
+  DOCS_DIR,
   EXAMPLE_PROFILES_DIR,
   EXAMPLES_DIR,
   GENERATED_DOCS_DIR,
@@ -55,6 +56,38 @@ function files(directory: string): string[] {
       return false;
     }
   });
+}
+
+/**
+ * The normative reference documents. The README links each one and the runner
+ * cites them by path, so the set is a published interface rather than a
+ * directory of prose that happens to exist.
+ */
+const REFERENCE_DOCS = [
+  "architecture.md",
+  "authorization-model.md",
+  "behavioral-model.md",
+  "certification.md",
+  "compatibility.md",
+  "event-model.md",
+  "failure-model.md",
+  "faq.md",
+  "governance.md",
+  "introduction.md",
+  "invariant-model.md",
+  "profile-authoring.md",
+  "security.md",
+  "state-model.md",
+  "terminology.md",
+  "vector-model.md",
+  "versioning.md",
+] as const;
+
+/** Every relative Markdown link in a document, as written. */
+function markdownLinks(markdown: string): string[] {
+  return [...markdown.matchAll(/\]\(([^)\s]+)\)/g)]
+    .map((match) => match[1] ?? "")
+    .filter((target) => target.endsWith(".md"));
 }
 
 /** The five validation entry points CI invokes. */
@@ -211,6 +244,33 @@ describe("example layout", () => {
     // The example set is flat on purpose: each file is a single document that
     // demonstrates exactly one schema, so nothing here may be a bundle.
     expect(subdirectories(EXAMPLES_DIR)).toEqual([]);
+  });
+});
+
+describe("reference documentation", () => {
+  it.each(REFERENCE_DOCS)("publishes a non-empty docs/%s", (name) => {
+    expect(files(DOCS_DIR)).toContain(name);
+    expect(statSync(join(DOCS_DIR, name)).size).toBeGreaterThan(0);
+  });
+
+  it("links every reference document from the README", () => {
+    const readme = readFileSync(join(REPO_ROOT, "README.md"), "utf8");
+    for (const name of REFERENCE_DOCS) {
+      // A document no reader can find is a document that will be missed when
+      // the model changes, so the README has to point at each one.
+      expect(readme, `README must link docs/${name}`).toContain(`docs/${name}`);
+    }
+  });
+
+  it("resolves every relative Markdown link between documents", () => {
+    for (const name of files(DOCS_DIR).filter((file) => file.endsWith(".md"))) {
+      const source = join(DOCS_DIR, name);
+      for (const target of markdownLinks(readFileSync(source, "utf8"))) {
+        expect(statSync(join(dirname(source), target)).isFile(), `${name} links to ${target}`).toBe(
+          true,
+        );
+      }
+    }
   });
 });
 
