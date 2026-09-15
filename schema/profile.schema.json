@@ -273,10 +273,11 @@
         },
         "interpretation_notes": {
           "type": "array",
+          "minItems": 1,
           "items": {
             "$ref": "#/$defs/prose"
           },
-          "description": "Each entry states an upstream ambiguity and the reading this profile adopts. Empty is only acceptable when the upstream text is fully explicit."
+          "description": "Each entry states an upstream ambiguity and the reading this profile adopts. Required to be non-empty for the same reason as `compatibility.notes`: a profile must record where it had to interpret, rather than letting a reader assume that every requirement was copied verbatim. A profile that genuinely follows an unambiguous upstream text records that fact as a note instead of leaving the list empty."
         }
       }
     },
