@@ -1,0 +1,419 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/assertion.schema.json",
+  "title": "Estamora Assertion Vocabulary",
+  "description": "The reusable expression and assertion vocabulary. Every check Estamora performs is ultimately a predicate evaluated against an observed execution, and a claim a profile makes must be a value the runner can compute without executing profile-supplied code. The algebra is total and non-Turing-complete on purpose: profiles are untrusted input, so a requirement is data to be evaluated by the runner, never a program to be run. This document also defines the standalone assertion-set shape that lets a suite of checks be named, categorised and reported individually.",
+  "type": "object",
+  "required": ["assertions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "assertions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/assertion"
+      }
+    }
+  },
+  "$defs": {
+    "valueExpr": {
+      "title": "Value expression",
+      "type": "object",
+      "description": "A value computed during a run. References name fixtures declared by the vector; reads invoke declared read-only contract methods; aggregates summarise a state resource set.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "value": {
+              "type": ["string", "number", "boolean", "null"],
+              "description": "An exact literal. Integer amounts are written as strings so that i128 values cannot be rounded by a JSON parser."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "ref"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "actor"
+            },
+            "ref": {
+              "$ref": "profile.schema.json#/$defs/identifier",
+              "description": "Name of an account or contract declared in the vector's fixtures."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "description": "Name of an argument of the operation under test."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "method", "args"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "read"
+            },
+            "method": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/valueExpr"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "over"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "sum"
+            },
+            "over": {
+              "$ref": "profile.schema.json#/$defs/identifier",
+              "description": "Resource set to aggregate, e.g. `balances`."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "of", "field"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "field"
+            },
+            "of": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "field": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "op", "operands"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "arithmetic"
+            },
+            "op": {
+              "type": "string",
+              "enum": ["+", "-", "*", "/"]
+            },
+            "operands": {
+              "type": "array",
+              "minItems": 2,
+              "items": {
+                "$ref": "#/$defs/valueExpr"
+              }
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "predicate": {
+      "title": "Predicate",
+      "type": "object",
+      "description": "A comparison evaluated against an observed execution. Relative forms (`delta`, `unchanged`) exist so that a profile can state how a value moved without also having to restate its absolute value, which would make the vector brittle against unrelated fixture changes.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "equal"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not_equal"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "less_than"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "less_or_equal"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "greater_than"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "left", "right"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "greater_or_equal"
+            },
+            "left": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "right": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "value", "allowed"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "one_of"
+            },
+            "value": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "allowed": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/valueExpr"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "value", "min", "max"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "in_range"
+            },
+            "value": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "min": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "max": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "target", "direction"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "delta"
+            },
+            "target": {
+              "$ref": "#/$defs/valueExpr"
+            },
+            "direction": {
+              "type": "string",
+              "enum": ["increase", "decrease", "unchanged"]
+            },
+            "by": {
+              "$ref": "#/$defs/valueExpr",
+              "description": "Exact magnitude of the change. Forbidden when the direction is `unchanged`, because an unchanged value cannot have changed by an amount."
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "direction": {
+                    "const": "unchanged"
+                  }
+                },
+                "required": ["direction"]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "by": false
+                }
+              }
+            }
+          ]
+        },
+        {
+          "type": "object",
+          "required": ["kind", "target"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "unchanged"
+            },
+            "target": {
+              "$ref": "#/$defs/valueExpr"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "predicates"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "all_of"
+            },
+            "predicates": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/predicate"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "predicates"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "any_of"
+            },
+            "predicates": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/predicate"
+              }
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "predicate"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "not"
+            },
+            "predicate": {
+              "$ref": "#/$defs/predicate"
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "assertionCategory": {
+      "type": "string",
+      "enum": ["interface", "authorization", "event", "behavior", "state", "invariant", "failure"],
+      "description": "Which conformance dimension the assertion belongs to. Categories are reported separately so that a passing interface check can never be presented as evidence of correct behaviour."
+    },
+    "assertion": {
+      "type": "object",
+      "required": ["id", "category", "description", "predicate"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier",
+          "description": "Unique within its containing document. Reported verbatim so that a failure names the exact rule that was violated."
+        },
+        "category": {
+          "$ref": "#/$defs/assertionCategory"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        },
+        "predicate": {
+          "$ref": "#/$defs/predicate"
+        }
+      }
+    }
+  }
+}
