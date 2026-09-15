@@ -1,0 +1,143 @@
+# yaml-language-server: $schema=../../../schema/authorization.schema.json
+authorization_rules:
+  - id: transfer-requires-holder-authorization
+    summary: A transfer must be authorized by the account whose balance is debited.
+    description: >-
+      The holder of the debited balance authorizes the movement of their own
+      value, and their authorization must cover the `from` argument so that a
+      caller cannot move value out of an account by naming it without being able
+      to prove authority over it. Authorizing with a different principal must be
+      rejected: accepting a substituted signature is what allows a third party to
+      drain an account that never signed.
+    methods: [transfer]
+    actor:
+      kind: argument
+      argument: from
+    coverage:
+      mode: exact
+      arguments: [from]
+    unauthorized:
+      kind: fail
+      failure: missing-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-actor
+    replay_sensitive: false
+    notes:
+      - >-
+        Replay is handled by the host's authorization framework rather than by
+        the contract, so a contract is not expected to implement its own nonce.
+
+  - id: transfer-from-requires-spender-authorization
+    summary: A transfer_from must be authorized by the spender whose allowance is consumed.
+    description: >-
+      The spender authorizes drawing on an allowance they were granted, not on
+      their own balance. The distinction is the whole point of the method, so a
+      contract that requires the holder's authorization here, or that accepts an
+      allowance without consuming it, is not conformant even though the balances
+      may end up correct.
+    methods: [transfer-from]
+    actor:
+      kind: argument
+      argument: spender
+      on_behalf_of: true
+    coverage:
+      mode: exact
+      arguments: [spender]
+    unauthorized:
+      kind: fail
+      failure: missing-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-actor
+    replay_sensitive: false
+
+  - id: approve-requires-holder-authorization
+    summary: An approve must be authorized by the account granting the allowance.
+    description: >-
+      Only the holder may grant a third party the right to spend their balance.
+      If anyone could call approve, an attacker could grant themselves an
+      allowance over someone else's funds and then spend it through transfer_from.
+    methods: [approve]
+    actor:
+      kind: argument
+      argument: from
+    coverage:
+      mode: exact
+      arguments: [from]
+    unauthorized:
+      kind: fail
+      failure: missing-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-actor
+    replay_sensitive: false
+
+  - id: burn-requires-holder-authorization
+    summary: A burn must be authorized by the account whose balance is destroyed.
+    description: >-
+      Destroying a holder's tokens without their authority is as damaging as
+      transferring them away, so the same authorization requirement applies to a
+      balance reduction that sends value nowhere.
+    methods: [burn]
+    actor:
+      kind: argument
+      argument: from
+    coverage:
+      mode: exact
+      arguments: [from]
+    unauthorized:
+      kind: fail
+      failure: missing-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-actor
+    replay_sensitive: false
+
+  - id: burn-from-requires-spender-authorization
+    summary: A burn_from must be authorized by the spender whose allowance is consumed.
+    description: >-
+      As with transfer_from, the authority comes from the allowance rather than
+      from the holder's balance. A burn_from that never consumes the allowance
+      would let a spender destroy an unbounded quantity of a holder's tokens
+      after a single approval.
+    methods: [burn-from]
+    actor:
+      kind: argument
+      argument: spender
+      on_behalf_of: true
+    coverage:
+      mode: exact
+      arguments: [spender]
+    unauthorized:
+      kind: fail
+      failure: missing-authorization
+    wrong_actor:
+      kind: fail
+      failure: wrong-actor
+    replay_sensitive: false
+
+  - id: reads-require-no-authorization
+    summary: Read-only metadata and balance queries must not require authorization.
+    description: >-
+      Requiring a signature to read a balance or a symbol would make the token
+      unusable from any context that cannot obtain one, and SEP-0041 defines none
+      of these calls as authorization-bearing. The coverage mode is `at_most`
+      with an empty argument list, which states positively that no argument may be
+      demanded rather than leaving the question open.
+    methods: [allowance, balance, decimals, name, symbol]
+    actor:
+      kind: none
+    coverage:
+      mode: at_most
+      arguments: []
+    unauthorized:
+      kind: succeed
+    wrong_actor:
+      kind: succeed
+    replay_sensitive: false
+    notes:
+      - >-
+        `unauthorized` and `wrong_actor` are recorded as success because a read
+        that ignores authorization entirely behaves the same way whether a
+        signature is present or not.
