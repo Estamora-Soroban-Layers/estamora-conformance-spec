@@ -1,0 +1,221 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/failure.schema.json",
+  "title": "Estamora Failure Requirements",
+  "description": "Negative testing is mandatory: behavioural conformance cannot be established by exercising only successful calls, because a contract that silently succeeds where the specification requires a rejection is the most dangerous kind of non-conformance. Soroban signals failure by trapping, and the trap payload is implementation-defined, so pinning an exact error symbol would reject conforming contracts. Estamora therefore standardises the semantic category of a failure, and lets a profile opt in to constraining the payload where the upstream specification genuinely defines it.",
+  "type": "object",
+  "required": ["failures"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "failures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/failureDefinition"
+      }
+    }
+  },
+  "$defs": {
+    "failureCategory": {
+      "type": "string",
+      "enum": [
+        "insufficient_balance",
+        "insufficient_allowance",
+        "unauthorized",
+        "missing_authorization",
+        "wrong_actor",
+        "invalid_amount",
+        "invalid_address",
+        "invalid_argument",
+        "invalid_state",
+        "uninitialized",
+        "expired",
+        "unsupported_operation",
+        "arithmetic_overflow",
+        "custom"
+      ],
+      "description": "Semantic class of the expected failure. Registry is closed so that the runner can report a stable category, and `custom` is the single escape hatch for profile-specific cases that must still be explained in prose."
+    },
+    "errorCodePolicy": {
+      "type": "string",
+      "enum": ["semantic_only", "tolerated", "exact_required"],
+      "description": "`semantic_only` requires only that the call failed for the right reason, which is the default and the only safe choice for interface-only specifications. `tolerated` accepts a listed set of payloads when present. `exact_required` demands one specific payload and is only justified when the upstream specification names it."
+    },
+    "failureDefinition": {
+      "type": "object",
+      "required": [
+        "id",
+        "category",
+        "summary",
+        "methods",
+        "trigger",
+        "expected",
+        "error_codes",
+        "rationale"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "category": {
+          "$ref": "#/$defs/failureCategory"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "methods": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of the methods from which this failure is reachable."
+        },
+        "trigger": {
+          "type": "string",
+          "minLength": 15,
+          "maxLength": 1000,
+          "description": "The condition that must produce this failure, stated as a precondition a vector can construct."
+        },
+        "expected": {
+          "type": "object",
+          "required": ["outcome", "signal", "state_effect", "events_emitted"],
+          "additionalProperties": false,
+          "properties": {
+            "outcome": {
+              "const": "failure",
+              "description": "Fixed to failure. A definition that expects success belongs in behavior.yaml, not here."
+            },
+            "signal": {
+              "type": "string",
+              "enum": ["trap", "panic", "host_error", "either"],
+              "description": "How the contract signals the failure. `trap` and `panic` reflect the current guidance that the token interface uses trapping rather than error codes. `either` accepts a host-level error because a contract may legitimately fail inside the host before its own check runs."
+            },
+            "state_effect": {
+              "type": "string",
+              "enum": ["reverted", "unchanged", "unspecified"],
+              "description": "What must have happened to the protected state. `reverted` requires the call to leave no trace, `unchanged` additionally allows a view-visible counter to move, and `unspecified` is available only where the upstream text is silent."
+            },
+            "events_emitted": {
+              "type": "string",
+              "enum": ["none", "unspecified"],
+              "description": "Whether the failed operation must emit no event. `none` is the norm: a failure that emits the success event would corrupt every indexer built on the standard."
+            }
+          }
+        },
+        "error_codes": {
+          "type": "object",
+          "required": ["policy", "allowed"],
+          "additionalProperties": false,
+          "properties": {
+            "policy": {
+              "$ref": "#/$defs/errorCodePolicy"
+            },
+            "allowed": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 2,
+                "maxLength": 128
+              },
+              "description": "Payload strings this failure tolerates. Must be empty when the policy is `semantic_only`."
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "policy": {
+                    "const": "semantic_only"
+                  }
+                },
+                "required": ["policy"]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "allowed": {
+                    "type": "array",
+                    "maxItems": 0
+                  }
+                }
+              }
+            },
+            {
+              "if": {
+                "properties": {
+                  "policy": {
+                    "const": "exact_required"
+                  }
+                },
+                "required": ["policy"]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "allowed": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 1
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20,
+          "maxLength": 2000
+        },
+        "references": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "pattern": "^https://"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "category": {
+                "enum": ["unauthorized", "missing_authorization", "wrong_actor"]
+              }
+            },
+            "required": ["category"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "expected": {
+                "type": "object",
+                "properties": {
+                  "signal": {
+                    "enum": ["trap", "panic", "either"],
+                    "description": "An authorization rejection is produced by the contract's own check, so a host-level error would mean the failure happened for a different reason than the profile claims."
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
