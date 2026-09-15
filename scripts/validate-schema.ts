@@ -28,6 +28,7 @@ import {
   ErrorCode,
   EXIT_CODES,
   getSchemaRegistry,
+  handleCliError,
   isJsonObject,
   JSON_SCHEMA_DIALECT,
   parseArgs,
@@ -262,4 +263,8 @@ function reportUnusedRefTargets(refs: readonly CollectedRef[], bag: DiagnosticBa
   }
 }
 
-process.exitCode = main(process.argv.slice(2));
+try {
+  process.exitCode = main(process.argv.slice(2));
+} catch (error) {
+  handleCliError(PROGRAM, "Validate the normative Estamora JSON Schemas.", COMMON_FLAGS, error);
+}

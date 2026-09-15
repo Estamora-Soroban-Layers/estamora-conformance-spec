@@ -138,6 +138,29 @@ export const COMMON_FLAGS: readonly FlagSpec[] = [
   { name: "help", type: "boolean", alias: "h", description: "Show this help text" },
 ];
 
+/**
+ * Report a command-line error and set the process exit code.
+ *
+ * A rejected command line is a tooling failure, not a specification defect, so it
+ * exits with the tooling code and prints usage. This distinction matters in CI: a
+ * mistyped flag must not be reported as an invalid profile, or a broken workflow
+ * would look like a non-conformant contract. Errors that are not command-line
+ * errors are rethrown so they surface with their own stack trace.
+ */
+export function handleCliError(
+  program: string,
+  description: string,
+  specs: readonly FlagSpec[],
+  error: unknown,
+): void {
+  if (error instanceof UsageError) {
+    process.stderr.write(`${error.message}\n\n${usage(program, description, specs)}\n`);
+    process.exitCode = EXIT_CODES.TOOLING_FAILURE;
+    return;
+  }
+  throw error;
+}
+
 /** Exit code used when a run completed but found defects. */
 export function exitWith(ok: boolean): ExitCode {
   return ok ? EXIT_CODES.SUCCESS : EXIT_CODES.DEFECTS_FOUND;

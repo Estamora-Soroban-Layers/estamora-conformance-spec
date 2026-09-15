@@ -35,6 +35,7 @@ import {
   ErrorCode,
   EXIT_CODES,
   getSchemaRegistry,
+  handleCliError,
   isJsonObject,
   loadProfileBundle,
   loadVectors,
@@ -589,4 +590,13 @@ function digestCorpus(vectors: readonly LoadedVector[]): string {
   return combineDigests(ordered.map(([, digest]) => digest as `sha256:${string}`));
 }
 
-process.exitCode = main(process.argv.slice(2));
+try {
+  process.exitCode = main(process.argv.slice(2));
+} catch (error) {
+  handleCliError(
+    PROGRAM,
+    "Validate the Estamora vector corpus for internal consistency.",
+    COMMON_FLAGS,
+    error,
+  );
+}
