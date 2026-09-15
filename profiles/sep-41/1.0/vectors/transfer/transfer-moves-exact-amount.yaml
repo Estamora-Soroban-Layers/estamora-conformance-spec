@@ -1,0 +1,134 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: transfer-moves-exact-amount
+profile: sep-41
+profile_version: "1.0"
+title: A funded transfer debits the sender and credits the recipient
+description: >-
+  Alice holds 1000 and transfers 250 to Bob. Afterwards Alice must hold 750 and
+  Bob 750, and exactly one transfer event must describe the movement with the
+  sender, recipient and amount the caller supplied. This is the baseline vector:
+  it establishes that value moved at all before any more interesting property is
+  checked.
+kind: positive
+method: transfer
+tags: [transfer, positive, state, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance is debited by the transfer.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The recipient whose balance is credited.
+  balances:
+    alice: "1000"
+    bob: "500"
+  allowances: []
+  total_supply: "1500"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    bob: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: sender-debited
+      description: Alice's balance must fall by exactly the transferred amount.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "750"
+    - id: recipient-credited
+      description: Bob's balance must rise by exactly the transferred amount.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+        right:
+          kind: literal
+          value: "750"
+    - id: supply-unchanged
+      description: The sum of all balances must be unchanged by an ordinary transfer.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: equal
+        left:
+          kind: sum
+          over: balances
+        right:
+          kind: literal
+          value: "1500"
+  events:
+    required:
+      - event: transfer
+        topics:
+          - kind: literal
+            value: transfer
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: bob
+        data:
+          - kind: literal
+            value: "250"
+    forbidden: [approve, burn]
+  invariants: [balances-conserved-by-transfer, balances-non-negative]
+
+assertions:
+  - id: destination-differs-from-source
+    category: behavior
+    description: A transfer must not be satisfied by leaving the balances untouched.
+    predicate:
+      kind: not_equal
+      left:
+        kind: actor
+        ref: alice
+      right:
+        kind: actor
+        ref: bob
+
+rationale: >-
+  Establishes the basic value movement every other transfer requirement depends
+  on. If this vector fails, no result from the more specific transfer vectors can
+  be interpreted, because the contract is not performing a transfer at all.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

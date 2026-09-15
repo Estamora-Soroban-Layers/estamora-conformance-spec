@@ -1,0 +1,81 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: balance-of-unknown-address-is-zero
+profile: sep-41
+profile_version: "1.0"
+title: An address with no balance entry reports zero rather than failing
+description: >-
+  Dave is not funded in this fixture. Reading his balance must succeed and return
+  zero. The requirement is a boundary case because an implementation that uses
+  the absence of a storage entry as an error signal would behave correctly for
+  every funded account and incorrectly for every unfunded one, so a suite of
+  funded-account vectors alone would never detect it.
+kind: boundary
+method: balance
+tags: [balance, boundary]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: A funded account used as the contrast case.
+    - name: dave
+      kind: account
+      ref: common/addresses/dave
+      description: An account with no balance entry at all.
+  balances:
+    alice: "1000"
+  allowances: []
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    dave: true
+
+inputs:
+  id:
+    kind: actor
+    ref: dave
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  returns:
+    kind: literal
+    value: "0"
+  state_assertions:
+    - id: unknown-account-reports-zero
+      description: The unfunded address must report a balance of zero.
+      resource:
+        kind: balance
+        account: dave
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: dave
+        right:
+          kind: literal
+          value: "0"
+  events:
+    required: []
+    forbidden: [transfer, approve, burn]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  SEP-0041 states that an address with no existing balance returns zero. Without
+  this vector a contract could require an explicit initialization step for every
+  recipient, which would break every caller that transfers to a fresh account and
+  would not be visible from the funded cases.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

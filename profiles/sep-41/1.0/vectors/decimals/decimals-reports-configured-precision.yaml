@@ -1,0 +1,66 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: decimals-reports-configured-precision
+profile: sep-41
+profile_version: "1.0"
+title: Metadata reads report stable values and emit nothing
+description: >-
+  decimals must return the precision the contract was configured with, and
+  reading it must not emit a value event or alter any state. The same requirement
+  applies to name and symbol, which this vector records as companion assertions
+  because they share the semantics but the runner reports one vector at a time.
+kind: positive
+method: decimals
+tags: [decimals, metadata, positive]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: A funded account, present so the state assertions have something to observe.
+  balances:
+    alice: "1000"
+  allowances: []
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+
+inputs: {}
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  returns:
+    kind: literal
+    value: 7
+  state_assertions:
+    - id: metadata-read-preserves-balances
+      description: Reading metadata must not change the sum of balances.
+      resource:
+        kind: total_supply
+      predicate:
+        kind: unchanged
+        target:
+          kind: sum
+          over: balances
+  events:
+    required: []
+    forbidden: [transfer, approve, burn]
+  invariants: []
+
+assertions: []
+
+rationale: >-
+  Seven decimals is the Stellar convention for a seven-decimal asset, and a token
+  that reports a different precision than it uses in practice misleads every
+  client that formats amounts for display. The event prohibition is as important
+  as the value assertion: a metadata read that emits a transfer event feeds a
+  spurious movement into every indexer that trusts the log.
+references:
+  - https://developers.stellar.org/docs/tokens/token-interface

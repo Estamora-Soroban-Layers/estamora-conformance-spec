@@ -1,0 +1,121 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: approve-overwrites-allowance
+profile: sep-41
+profile_version: "1.0"
+title: approve replaces the existing allowance instead of adding to it
+description: >-
+  Alice has already approved Carol for 100. She approves Carol for 30. The
+  resulting allowance must be 30, not 130, and exactly one approve event must
+  report the new amount together with the new expiry. A contract that accumulates
+  would let repeated small approvals build authority far beyond any single grant
+  the holder believed they were making.
+kind: positive
+method: approve
+tags: [approve, positive, allowance, event]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder granting a new allowance.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender whose allowance is being replaced.
+  balances:
+    alice: "1000"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "100"
+      live_until_ledger: 5000
+  total_supply: "1000"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  spender:
+    kind: actor
+    ref: carol
+  amount:
+    kind: literal
+    value: "30"
+  live_until_ledger:
+    kind: literal
+    value: 6000
+
+authorization:
+  actors: [alice]
+  expected: accepted
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: allowance-replaced-not-added
+      description: The allowance must equal the new amount, not the sum of old and new.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "30"
+    - id: holder-balance-unchanged
+      description: Granting an allowance must not move any tokens by itself.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+  events:
+    required:
+      - event: approve
+        topics:
+          - kind: literal
+            value: approve
+          - kind: actor
+            ref: alice
+          - kind: actor
+            ref: carol
+        data:
+          - kind: literal
+            value: "30"
+          - kind: literal
+            value: 6000
+    forbidden: [transfer, burn]
+  invariants: [allowances-non-negative]
+
+assertions: []
+
+rationale: >-
+  SEP-0041 states explicitly that calling approve again replaces the current
+  allowance rather than adding to it. The distinction is not cosmetic: an
+  accumulating implementation makes every prior approval permanent, so the total
+  authority a spender holds grows without any single grant appearing unusual.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

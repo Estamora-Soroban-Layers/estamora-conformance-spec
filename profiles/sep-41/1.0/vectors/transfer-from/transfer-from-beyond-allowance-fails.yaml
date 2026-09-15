@@ -1,0 +1,133 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: transfer-from-beyond-allowance-fails
+profile: sep-41
+profile_version: "1.0"
+title: A transfer_from above the remaining allowance must fail and change nothing
+description: >-
+  Alice has approved Carol for 100 but holds 1000. Carol attempts to move 250.
+  The call must fail, both balances and the allowance must be exactly as they
+  were, and no transfer event may appear. A contract that honours the request by
+  falling back on Alice's balance has turned a bounded approval into unbounded
+  authority over her funds.
+kind: negative
+method: transfer-from
+tags: [transfer-from, negative, authorization, allowance, state]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose balance must not be touched.
+    - name: bob
+      kind: account
+      ref: common/addresses/bob
+      description: The intended recipient of the transfer.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender attempting to exceed the allowance granted to her.
+  balances:
+    alice: "1000"
+    bob: "500"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "100"
+      live_until_ledger: 5000
+  total_supply: "1500"
+  ledger:
+    sequence: 1000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  spender:
+    kind: actor
+    ref: carol
+  from:
+    kind: actor
+    ref: alice
+  to:
+    kind: actor
+    ref: bob
+  amount:
+    kind: literal
+    value: "250"
+
+authorization:
+  actors: [carol]
+  expected: accepted
+
+expected:
+  outcome: failure
+  failure: insufficient-allowance
+  state_assertions:
+    - id: holder-balance-untouched
+      description: A rejected transfer_from must leave the holder's balance unchanged.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+        right:
+          kind: literal
+          value: "1000"
+    - id: allowance-not-consumed
+      description: A rejected transfer_from must not reduce the allowance it failed against.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "100"
+    - id: recipient-unchanged
+      description: No value may reach the recipient of a rejected transfer.
+      resource:
+        kind: balance
+        account: bob
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: bob
+  events:
+    required: []
+    forbidden: [transfer, approve]
+  invariants:
+    - failed-operation-does-not-mutate-state
+    - allowance-non-increasing-without-approve
+
+assertions: []
+
+rationale: >-
+  The allowance is the holder's only limit on a third party, so the failure to
+  enforce it is indistinguishable from having granted unlimited authority. The
+  allowance assertion is separate from the balance assertion because a contract
+  may correctly refuse the transfer while still having decremented the allowance,
+  which would silently erode the holder's remaining grant.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md

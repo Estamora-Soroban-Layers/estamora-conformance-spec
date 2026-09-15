@@ -1,0 +1,102 @@
+# yaml-language-server: $schema=../../../../../schema/vector.schema.json
+id: allowance-expired-reads-as-zero
+profile: sep-41
+profile_version: "1.0"
+title: An expired allowance reads as zero rather than as its original amount
+description: >-
+  Alice approved Carol for 400 with an expiry at ledger 5000. The vector executes
+  at ledger 6000, so the allowance has lapsed. Reading it must return zero. This
+  is a boundary case rather than an ordinary negative one: the contract still
+  holds a record of the grant, and the requirement is about how that lapsed
+  record is interpreted.
+kind: boundary
+method: allowance
+tags: [allowance, boundary, expiry]
+
+fixtures:
+  actors:
+    - name: alice
+      kind: account
+      ref: common/addresses/alice
+      description: The holder whose lapsed grant is being read.
+    - name: carol
+      kind: account
+      ref: common/addresses/carol
+      description: The spender whose authority has expired.
+  balances:
+    alice: "1000"
+    carol: "0"
+  allowances:
+    - from: alice
+      spender: carol
+      amount: "400"
+      live_until_ledger: 5000
+  total_supply: "1000"
+  ledger:
+    sequence: 6000
+    timestamp: "2026-01-15T12:00:00Z"
+  authorization:
+    alice: true
+    carol: true
+
+inputs:
+  from:
+    kind: actor
+    ref: alice
+  spender:
+    kind: actor
+    ref: carol
+
+authorization:
+  actors: []
+  expected: not_required
+
+expected:
+  outcome: success
+  state_assertions:
+    - id: expired-allowance-is-zero
+      description: A lapsed allowance must read as zero, not as the original amount.
+      resource:
+        kind: allowance
+        from: alice
+        spender: carol
+      predicate:
+        kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: actor
+              ref: alice
+            - kind: actor
+              ref: carol
+        right:
+          kind: literal
+          value: "0"
+    - id: holder-balance-unchanged
+      description: Reading a lapsed allowance must not alter the holder's balance.
+      resource:
+        kind: balance
+        account: alice
+      predicate:
+        kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: actor
+              ref: alice
+  events:
+    required: []
+    forbidden: [approve, transfer, burn]
+  invariants: [allowances-non-negative]
+
+assertions: []
+
+rationale: >-
+  Reporting the original amount would show a wallet that a spender still has
+  authority the contract will refuse, and would make an upcoming transfer_from
+  look like it must succeed when it must fail. The requirement is stated by
+  SEP-0041 directly, so this vector pins the reading rather than inventing it.
+references:
+  - https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
