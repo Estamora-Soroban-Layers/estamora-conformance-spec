@@ -118,7 +118,13 @@ export function discoverProfileDirectories(root: string = PROFILES_DIR): readonl
       }
     }
   }
-  found.push(...discoverExampleProfiles(EXAMPLE_PROFILES_DIR));
+  // Example profiles are only part of the repository's own registry. A caller
+  // walking some other directory is asking about that directory, and silently
+  // appending the repository's examples would make the result depend on a tree
+  // the caller never mentioned.
+  if (root === PROFILES_DIR) {
+    found.push(...discoverExampleProfiles(EXAMPLE_PROFILES_DIR));
+  }
   return found.sort();
 }
 
