@@ -24,6 +24,8 @@
  * set of vectors rather than to "whatever was in the repository at the time".
  */
 
+import { basename } from "node:path";
+
 import {
   booleanFlag,
   combineDigests,
@@ -44,6 +46,7 @@ import {
   prettyJson,
   PROFILES_DIR,
   reportSummary,
+  setMachineReadable,
   usage,
   WILDCARD_PROFILE,
   type LoadedVector,
@@ -83,6 +86,8 @@ function main(argv: readonly string[]): number {
     return EXIT_CODES.SUCCESS;
   }
 
+  setMachineReadable(booleanFlag(args, "json"));
+
   const bag = new DiagnosticBag();
   const registry = getSchemaRegistry();
 
@@ -106,9 +111,11 @@ function main(argv: readonly string[]): number {
   }
 
   for (const { bundle, vector } of bundleVectors) {
+    checkFileNameMatchesId(vector, bag);
     checkVectorIntegrity(vector, bundle, bag);
   }
   for (const vector of sharedVectors) {
+    checkFileNameMatchesId(vector, bag);
     checkSharedVectorIntegrity(vector, bag);
   }
 
@@ -129,6 +136,30 @@ function main(argv: readonly string[]): number {
     );
   }
   return ok ? EXIT_CODES.SUCCESS : EXIT_CODES.DEFECTS_FOUND;
+}
+
+/**
+ * Require a vector file to be named after the identity it declares.
+ *
+ * The file name is how a reader navigates the corpus and how a diff shows which
+ * requirement changed, so a file called `transfer-without-holder-authorization`
+ * that declares the id `transfer-authorized-by-wrong-actor-fails` makes both the
+ * review and the report harder to follow. Enforcing the correspondence also
+ * means two files cannot claim one identity in different directories.
+ */
+function checkFileNameMatchesId(loaded: LoadedVector, bag: DiagnosticBag): void {
+  const id = loaded.vector?.id;
+  if (id === undefined) {
+    return;
+  }
+  const expected = `${id}.yaml`;
+  if (basename(loaded.path) !== expected) {
+    bag.error(
+      ErrorCode.VECTOR_ERROR,
+      `Vector file must be named ${JSON.stringify(expected)} to match its declared id ${JSON.stringify(id)}.`,
+      loaded.path,
+    );
+  }
 }
 
 /** Check a vector that lives inside a profile bundle. */
