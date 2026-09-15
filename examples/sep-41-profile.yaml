@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../schema/profile.schema.json
+#
+# The SEP-41 profile document, reproduced here as a standalone example.
+#
+# The authoritative copy lives at profiles/sep-41/1.0/profile.yaml, where the rest
+# of the bundle sits beside it. This file exists so that a reader browsing the
+# examples directory sees what a real, upstream-derived profile looks like next to
+# the invented ones, and so that the examples validator has a case that pins an
+# actual specification revision.
+#
+# The `compatibility` and `provenance` blocks are the parts worth reading. They are
+# where a profile is required to admit what it does not cover and where it had to
+# interpret, which is the difference between a specification and a summary.
+estamora_spec_version: "1.0"
+
+profile:
+  id: sep-41
+  version: "1.0"
+  title: Soroban Token Interface
+  status: draft
+  summary: Behavioural requirements for the SEP-41 fungible token interface on Soroban.
+  description: >-
+    SEP-41 defines the token interface every Soroban token should expose so that
+    contracts, wallets and indexers can handle tokens generically. This profile
+    encodes that interface as checkable requirements, including the authorization
+    obligations that determine who must sign a value movement and the event
+    obligations that determine what consumers of the log will observe.
+
+  license: Apache-2.0
+
+  specification:
+    name: SEP-0041
+    title: Soroban Token Interface
+    version: "0.5.1"
+    status: draft
+    url: https://github.com/stellar/stellar-protocol/blob/master/ecosystem/sep-0041.md
+    updated: "2026-08-03"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        All ten methods of the upstream trait are modelled as required, and all
+        five events are modelled, with mint and clawback optional because the
+        specification defines no functions that trigger them.
+      - >-
+        The Stellar Asset Contract emits the same event names with an additional
+        trailing SEP-11 asset topic. That shape belongs to CAP-67 and is out of
+        scope here, so a SAC is not expected to be certified against this profile
+        without a second profile that models the extra topic.
+
+  provenance:
+    source: upstream-specification
+    derived_from: stellar-protocol@master ecosystem/sep-0041.md v0.5.1 (updated 2026-08-03)
+    interpretation_notes:
+      - >-
+        The trait declares transfer with a muxed destination and transfer_from with
+        a plain one. Both are modelled as declared, because the asymmetry changes
+        which event payload a conforming contract must emit.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - allowance
+    - approve
+    - balance
+    - burn
+    - burn-from
+    - decimals
+    - name
+    - symbol
+    - transfer
+    - transfer-from
+  shared_vectors:
+    - common
+    - sep-41

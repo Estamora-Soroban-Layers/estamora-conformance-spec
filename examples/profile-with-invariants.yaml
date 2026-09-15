@@ -1,0 +1,76 @@
+# yaml-language-server: $schema=../schema/invariant.schema.json
+#
+# An invariants document on its own.
+#
+# Validates against invariant.schema.json and nothing else, which is how the
+# examples validator distinguishes it from the three profile documents that sit
+# beside it. It is worth showing in isolation because invariants are the part of a
+# profile most often written as prose, and the three here demonstrate the three
+# shapes the vocabulary supports: an aggregate that must not change, a bound that
+# must hold for every member of a resource set, and a condition that must survive a
+# failed operation.
+invariants:
+  - id: supply-conserved-by-transfer
+    title: Transfers conserve the total of all balances
+    kind: conservation
+    severity: error
+    summary: Moving value between holders must not change the sum of all balances.
+    description: >-
+      Taken across the whole fixture balance set rather than across the two
+      accounts the operation names, so a contract that credits a third account or
+      rounds a remainder into a fee address is caught as well.
+    scope:
+      methods: [transfer, transfer-from]
+      outcomes: [success]
+    resource: balances
+    rationale: >-
+      A token whose supply drifts on ordinary transfers has a silently inflating
+      or deflating supply. Every balance shown to a user becomes wrong in
+      aggregate even though each individual transfer looks correct, and the error
+      stays invisible until somebody reconciles the ledger against the events.
+
+  - id: allowances-within-bounds
+    title: Every allowance stays within its legal bounds
+    kind: bounds
+    severity: error
+    summary: Each allowance must be non-negative and no greater than the approved amount.
+    description: >-
+      Evaluated once against each member of the allowance set, which is what the
+      resource-member expression exists for. An allowance is reduced by use, so it
+      is the value most likely to be driven below zero by an unchecked
+      subtraction.
+    scope:
+      methods: ["*"]
+      outcomes: [success]
+    resource: allowances
+    predicate:
+      kind: all_of
+      predicates:
+        - kind: greater_or_equal
+          left:
+            kind: resource_member
+          right:
+            kind: literal
+            value: "0"
+    rationale: >-
+      A negative allowance inverts the meaning of a spending limit: a comparison
+      against a requested amount could then pass for any quantity at all. Left
+      unchecked it converts a bounded approval into unlimited authority over the
+      holder's balance.
+
+  - id: rejected-calls-leave-no-trace
+    title: A rejected call leaves no trace
+    kind: state_unchanged
+    severity: error
+    summary: When an operation fails, every observed value must be exactly as it was.
+    description: >-
+      Scoped to the failure outcome specifically, so a contract cannot satisfy it
+      by never failing. Applies to every method the profile declares.
+    scope:
+      methods: ["*"]
+      outcomes: [failure]
+    rationale: >-
+      A partially applied operation is worse than a rejected one, because the
+      caller cannot tell what happened and cannot safely retry. Half-completed work
+      also lets an attacker probe for asymmetric failures that leave the contract
+      in a state favourable to them.

@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=../schema/profile.schema.json
+#
+# A custom interface profile.
+#
+# Estamora is not a token checker. This example uses a deliberately non-token
+# interface — a counter with an administrative reset — to show that the profile
+# system is about interface behaviour rather than about fungible assets. The
+# interesting part is the authorization model: an administrative method that the
+# holder cannot call, which is a shape no allowance-based interface has.
+estamora_spec_version: "1.0"
+
+profile:
+  id: counter
+  version: "1.0"
+  title: Counter Interface
+  status: draft
+  summary: An increment-and-read counter with an administrative reset.
+  description: >-
+    Demonstrated here to make a specific point about how Estamora separates
+    conformance dimensions. The counter has one mutating method that anyone may
+    call, one read, and one administrative method restricted to a single
+    principal. Its event requirements are simple but strict: an increment that
+    does not emit its event is a conformance failure regardless of whether the
+    stored value changed, because consumers watch the log rather than the storage.
+
+  license: Apache-2.0
+
+  specification:
+    name: EXAMPLE-0003
+    title: Counter Interface
+    version: "1.0"
+    status: draft
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+    updated: "2026-01-15"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: partial
+    notes:
+      - >-
+        Partial by construction: the example omits any vector directory, so the
+        manifest declares no vectors this bundle owns and relies entirely on the
+        shared library. A real profile at this status would not be publishable.
+      - >-
+        Illustrative only, and it describes an interface invented for
+        documentation purposes rather than any deployed contract.
+
+  provenance:
+    source: composite
+    derived_from: Estamora example set, written for documentation purposes
+    interpretation_notes:
+      - >-
+        The requirement that an increment emits exactly one event comes from the
+        example's own design rather than from an upstream document, and is
+        recorded here so a reader knows it carries no external authority.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors: []
+  shared_vectors:
+    - common

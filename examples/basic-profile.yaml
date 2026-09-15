@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=../schema/profile.schema.json
+#
+# A minimal profile document.
+#
+# This is the smallest profile that is still honest: one interface, one upstream
+# revision, and a manifest that names the documents the rest of the requirements
+# live in. It is a `profile.yaml` on its own, so it validates against
+# profile.schema.json and nothing else — which is how the examples validator
+# decides which schema an example without a directory is meant to demonstrate.
+estamora_spec_version: "1.0"
+
+profile:
+  id: minimal-token
+  version: "0.1"
+  title: Minimal Token Interface
+  status: experimental
+  summary: A deliberately small deposit-and-balance interface used to illustrate profile structure.
+  description: >-
+    Shows the shape of a profile without the requirements of a real standard. The
+    interface has two methods, one authorization rule, one event and a single
+    invariant. Nothing here is drawn from an upstream specification, which is why
+    the provenance block records that the requirements are illustrative rather
+    than normative.
+
+  license: Apache-2.0
+
+  specification:
+    name: EXAMPLE-0001
+    title: Minimal Token Interface
+    version: "0.1"
+    status: draft
+    url: https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec
+    updated: "2026-01-15"
+
+  maintainers:
+    - winningtalker-commits
+
+  compatibility:
+    interface: full
+    notes:
+      - >-
+        Illustrative only. This profile describes an interface invented for the
+        example, so it carries no authority over any deployed contract and must
+        not be treated as a standard.
+
+  provenance:
+    source: composite
+    derived_from: Estamora example set, written for documentation purposes
+    interpretation_notes:
+      - >-
+        Because no upstream specification exists for this interface, the whole
+        document is an interpretation. It is recorded here rather than left
+        implicit so that a reader cannot mistake the example for a ratified
+        standard.
+
+includes:
+  methods: methods.yaml
+  authorization: authorization.yaml
+  events: events.yaml
+  behavior: behavior.yaml
+  invariants: invariants.yaml
+  failures: failures.yaml
+  vectors:
+    - deposit
+    - balance
+  shared_vectors:
+    - common
