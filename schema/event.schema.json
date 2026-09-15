@@ -1,0 +1,373 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://estamora.dev/schema/event.schema.json",
+  "title": "Estamora Event Requirements",
+  "description": "Events are part of behavioural compatibility, not decoration. Downstream systems such as indexers, block explorers and wallets reconstruct state from the event log, so a contract that moves value correctly but emits the wrong event, the wrong number of events, or values that disagree with the state change is not conformant. This schema therefore makes topics, payload shape, value bindings, cardinality and ordering all expressible, and binds event values to the state they are supposed to describe.",
+  "type": "object",
+  "required": ["events"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/eventDefinition"
+      }
+    }
+  },
+  "$defs": {
+    "eventDataFormat": {
+      "type": "string",
+      "enum": ["scalar", "vec", "map", "either"],
+      "description": "Encoded shape of the data payload. SEP-41 explicitly permits both a single-value/vec form and a map form for several events, so `either` exists to accept both readings rather than forcing one and failing conforming contracts."
+    },
+    "eventOccurrence": {
+      "type": "string",
+      "enum": ["on_success", "on_failure", "always"],
+      "description": "When the event must appear relative to the outcome of the operation."
+    },
+    "eventBinding": {
+      "title": "Event value binding",
+      "type": "object",
+      "description": "Where an expected event value comes from. Bindings are how a profile says \"the amount in this event must equal the amount that was actually transferred\" instead of hard-coding a number that a different fixture would invalidate.",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "value"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "literal"
+            },
+            "value": {
+              "type": ["string", "number", "boolean", "null"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "ref"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "actor"
+            },
+            "ref": {
+              "$ref": "profile.schema.json#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "name"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "input"
+            },
+            "name": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "resource", "target"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "state_after"
+            },
+            "resource": {
+              "type": "string",
+              "enum": ["balance", "allowance", "total_supply"]
+            },
+            "target": {
+              "$ref": "profile.schema.json#/$defs/identifier"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["kind", "method", "args"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "read"
+            },
+            "method": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "assertion.schema.json#/$defs/valueExpr"
+              }
+            }
+          }
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "eventTopic": {
+      "type": "object",
+      "description": "One position in the event's topic list, which is positionally significant because consumers match on it.",
+      "required": ["index", "type", "binding", "semantics"],
+      "additionalProperties": false,
+      "properties": {
+        "index": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7,
+          "description": "Zero-based topic index. Bounded because Soroban limits the number of contract event topics."
+        },
+        "type": {
+          "$ref": "method.schema.json#/$defs/typeExpr"
+        },
+        "binding": {
+          "$ref": "#/$defs/eventBinding"
+        },
+        "semantics": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        }
+      }
+    },
+    "eventDataField": {
+      "type": "object",
+      "required": ["name", "type", "binding", "semantics", "optional"],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        },
+        "type": {
+          "$ref": "method.schema.json#/$defs/typeExpr"
+        },
+        "binding": {
+          "$ref": "#/$defs/eventBinding"
+        },
+        "semantics": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 1000
+        },
+        "optional": {
+          "type": "boolean",
+          "description": "Whether the field may be absent. Muxed-account payloads may omit the multiplexing id, so this cannot be assumed false."
+        }
+      }
+    },
+    "eventDefinition": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "requirement",
+        "summary",
+        "occurrence",
+        "topics",
+        "data",
+        "cardinality",
+        "ordering",
+        "correlations"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "profile.schema.json#/$defs/identifier"
+        },
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "description": "The symbol actually emitted, e.g. `transfer`."
+        },
+        "requirement": {
+          "$ref": "profile.schema.json#/$defs/requirementStatus"
+        },
+        "summary": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 4000
+        },
+        "occurrence": {
+          "$ref": "#/$defs/eventOccurrence"
+        },
+        "topics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/eventTopic"
+          }
+        },
+        "data": {
+          "type": "object",
+          "required": ["format", "fields"],
+          "additionalProperties": false,
+          "properties": {
+            "format": {
+              "$ref": "#/$defs/eventDataFormat"
+            },
+            "fields": {
+              "type": "array",
+              "description": "Named payload entries for the map form. May be empty for the scalar and vec forms, where position carries the meaning.",
+              "items": {
+                "$ref": "#/$defs/eventDataField"
+              }
+            }
+          }
+        },
+        "cardinality": {
+          "type": "object",
+          "description": "How many events matching this definition may be observed. A successful transfer emitting zero or two transfer events is a conformance failure even when the balances are right.",
+          "required": ["min", "max"],
+          "additionalProperties": false,
+          "properties": {
+            "min": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1024
+            },
+            "max": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1024
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "min": {
+                    "const": 0
+                  },
+                  "max": {
+                    "type": "integer"
+                  }
+                },
+                "required": ["min", "max"]
+              },
+              "then": {
+                "type": "object",
+                "properties": {
+                  "max": {
+                    "const": 0
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "ordering": {
+          "type": "array",
+          "description": "Relative ordering constraints against other event ids in this profile.",
+          "items": {
+            "type": "object",
+            "required": ["before", "strict"],
+            "additionalProperties": false,
+            "properties": {
+              "before": {
+                "$ref": "profile.schema.json#/$defs/identifier"
+              },
+              "strict": {
+                "type": "boolean",
+                "description": "Whether an event of the named type must strictly follow, rather than being allowed to be absent."
+              }
+            }
+          }
+        },
+        "correlations": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "profile.schema.json#/$defs/identifier"
+          },
+          "description": "Ids of invariants the event's values must be consistent with, e.g. that the event amount matches the observed balance delta."
+        },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "requirement": {
+                "const": "forbidden"
+              }
+            },
+            "required": ["requirement"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "cardinality": {
+                "type": "object",
+                "properties": {
+                  "min": {
+                    "const": 0
+                  },
+                  "max": {
+                    "const": 0
+                  }
+                }
+              },
+              "occurrence": {
+                "type": "string",
+                "const": "on_failure"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "data": {
+                "type": "object",
+                "properties": {
+                  "format": {
+                    "enum": ["map", "either"]
+                  }
+                },
+                "required": ["format"]
+              }
+            },
+            "required": ["data"]
+          },
+          "then": {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "object",
+                "properties": {
+                  "fields": {
+                    "type": "array",
+                    "minItems": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
