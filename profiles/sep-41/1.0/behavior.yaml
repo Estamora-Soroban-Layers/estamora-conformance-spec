@@ -1,0 +1,542 @@
+# yaml-language-server: $schema=../../../schema/behavior.schema.json
+behaviors:
+  - id: transfer-moves-exact-amount
+    summary: A funded transfer debits the sender and credits the recipient by the exact amount.
+    description: >-
+      The defining property of a transfer. It is stated as a pair of relative
+      changes rather than as absolute balances so that the requirement holds for
+      any opening fixture: what matters is that one balance moved down by exactly
+      the amount and the other moved up by exactly the same amount.
+    method: transfer
+    kind: success
+    preconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        direction: decrease
+        by:
+          kind: input
+          name: amount
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: to
+        direction: increase
+        by:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events: [transfer]
+    forbid_events: []
+    invariants: [balances-conserved-by-transfer, balances-non-negative]
+
+  - id: transfer-insufficient-balance-fails
+    summary: A transfer larger than the sender's balance must fail and change nothing.
+    description: >-
+      The failure path that protects every holder. It is separated from the
+      success path because a contract that silently succeeds here, for example by
+      saturating at zero is a critical non-conformance that no positive vector can
+      detect.
+    method: transfer
+    kind: failure
+    preconditions:
+      - kind: less_than
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: to
+    expect_failures: [insufficient-balance]
+    expect_events: []
+    forbid_events: [transfer]
+    invariants: [failed-operation-does-not-mutate-state]
+
+  - id: transfer-without-authorization-fails
+    summary: A transfer invoked without the holder's authorization must fail and change nothing.
+    description: >-
+      A contract that moves value for a caller who cannot prove authority over the
+      source account is exploitable by anyone who can name an address, which is
+      why this failure path is required rather than optional.
+    method: transfer
+    kind: failure
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+      - kind: unchanged
+        target:
+          kind: sum
+          over: balances
+    expect_failures: [missing-authorization]
+    expect_events: []
+    forbid_events: [transfer]
+    invariants: [unauthorized-operation-does-not-mutate-state]
+
+  - id: transfer-does-not-change-total-balances
+    summary: A transfer preserves the sum of all balances.
+    description: >-
+      Transfers move value between holders; they do not create or destroy it. The
+      property is asserted over the whole balance set rather than over the two
+      accounts involved, so a contract that quietly credits a third account is
+      caught.
+    method: transfer
+    kind: success
+    preconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: sum
+          over: balances
+    expect_failures: []
+    expect_events: [transfer]
+    forbid_events: []
+    invariants: [balances-conserved-by-transfer]
+
+  - id: transfer-from-consumes-exact-amount
+    summary: A transfer_from debits the holder, credits the destination and reduces the allowance.
+    description: >-
+      Three effects must happen together. A contract that moves the balances but
+      leaves the allowance untouched lets a spender reuse an approval without
+      limit, which is the single most common way an allowance model is broken
+      while every positive transfer test still passes.
+    method: transfer-from
+    kind: success
+    preconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        right:
+          kind: input
+          name: amount
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        direction: decrease
+        by:
+          kind: input
+          name: amount
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: to
+        direction: increase
+        by:
+          kind: input
+          name: amount
+      - kind: delta
+        target:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        direction: decrease
+        by:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events: [transfer]
+    forbid_events: []
+    invariants: [allowance-non-increasing-without-approve, balances-conserved-by-transfer]
+
+  - id: transfer-from-beyond-allowance-fails
+    summary: A transfer_from larger than the remaining allowance must fail and change nothing.
+    description: >-
+      The allowance is a limit, not a suggestion. A contract that transfers the
+      full balance when the allowance is short has silently converted a bounded
+      approval into unbounded authority over the holder's funds.
+    method: transfer-from
+    kind: failure
+    preconditions:
+      - kind: less_than
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+      - kind: unchanged
+        target:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+    expect_failures: [insufficient-allowance]
+    expect_events: []
+    forbid_events: [transfer]
+    invariants: [failed-operation-does-not-mutate-state]
+
+  - id: transfer-from-with-expired-allowance-fails
+    summary: A transfer_from against an expired allowance must fail and change nothing.
+    description: >-
+      Expiry is what makes an allowance temporary. The precondition states the
+      expiry from the fixture rather than from the contract, because once an
+      allowance has expired the interface cannot distinguish it from one that
+      never existed, and a contract that keeps honouring a lapsed approval is
+      granting authority the holder did not renew.
+    method: transfer-from
+    kind: failure
+    preconditions:
+      - kind: less_than
+        left:
+          kind: allowance_expiry
+          from:
+            kind: input
+            name: from
+          spender:
+            kind: input
+            name: spender
+        right:
+          kind: ledger_sequence
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+    expect_failures: [insufficient-allowance]
+    expect_events: []
+    forbid_events: [transfer]
+    invariants: [failed-operation-does-not-mutate-state]
+
+  - id: approve-overwrites-allowance
+    summary: approve replaces the current allowance and expiry rather than adding to them.
+    description: >-
+      SEP-0041 is explicit that the new amount overwrites the old one. A contract
+      that accumulates instead would let repeated small approvals build an
+      allowance far larger than any single approval the holder thought they were
+      granting.
+    method: approve
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        right:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events: [approve]
+    forbid_events: []
+    invariants: [allowances-non-negative]
+
+  - id: approve-without-authorization-fails
+    summary: An approve invoked without the holder's authorization must fail and change nothing.
+    description: >-
+      Without this requirement an attacker could grant themselves an allowance
+      over a victim's balance and then draw on it through transfer_from, turning
+      two individually well-behaved methods into a complete loss of funds.
+    method: approve
+    kind: failure
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+    expect_failures: [missing-authorization]
+    expect_events: []
+    forbid_events: [approve]
+    invariants: [unauthorized-operation-does-not-mutate-state]
+
+  - id: allowance-expired-reads-as-zero
+    summary: An expired allowance reads as zero rather than as its original amount.
+    description: >-
+      SEP-0041 states that an expired entry should be treated as a zero allowance.
+      Reporting the original amount would let a wallet display authority the
+      holder no longer has, and would let a client believe a transfer_from will
+      succeed when it must fail.
+    method: allowance
+    kind: success
+    preconditions:
+      - kind: less_than
+        left:
+          kind: allowance_expiry
+          from:
+            kind: input
+            name: from
+          spender:
+            kind: input
+            name: spender
+        right:
+          kind: ledger_sequence
+    postconditions:
+      - kind: equal
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        right:
+          kind: literal
+          value: "0"
+    expect_failures: []
+    expect_events: []
+    forbid_events: [approve]
+    invariants: []
+
+  - id: burn-reduces-holder-balance
+    summary: A burn reduces the holder's balance by the burned amount and emits exactly one burn event.
+    description: >-
+      Destroying tokens must be observable both in the balance and in the event
+      log, because the event is the only record downstream systems get that
+      supply left circulation.
+    method: burn
+    kind: success
+    preconditions:
+      - kind: greater_or_equal
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: delta
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        direction: decrease
+        by:
+          kind: input
+          name: amount
+    expect_failures: []
+    expect_events: [burn]
+    forbid_events: []
+    invariants: [burn-does-not-increase-balances]
+
+  - id: burn-beyond-balance-fails
+    summary: A burn larger than the holder's balance must fail and change nothing.
+    description: >-
+      Equivalent to the insufficient-balance case for transfers. An arithmetic
+      underflow that wraps would be far worse than a failure, because it would
+      fabricate an enormous balance out of nothing.
+    method: burn
+    kind: failure
+    preconditions:
+      - kind: less_than
+        left:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+    expect_failures: [insufficient-balance]
+    expect_events: []
+    forbid_events: [burn]
+    invariants: [failed-operation-does-not-mutate-state]
+
+  - id: burn-from-beyond-allowance-fails
+    summary: A burn_from larger than the remaining allowance must fail and change nothing.
+    description: >-
+      The spender's authority to destroy tokens is bounded by the allowance in
+      exactly the same way as their authority to move them, and the allowance must
+      not be consumed by the failed attempt.
+    method: burn-from
+    kind: failure
+    preconditions:
+      - kind: less_than
+        left:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+        right:
+          kind: input
+          name: amount
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: read
+          method: balance
+          args:
+            - kind: input
+              name: from
+      - kind: unchanged
+        target:
+          kind: read
+          method: allowance
+          args:
+            - kind: input
+              name: from
+            - kind: input
+              name: spender
+    expect_failures: [insufficient-allowance]
+    expect_events: []
+    forbid_events: [burn]
+    invariants: [failed-operation-does-not-mutate-state]
+
+  - id: balance-read-does-not-mutate-state
+    summary: A balance query must not change any contract state.
+    description: >-
+      A view that mutates is a view that cannot be simulated safely, and it is
+      also how a contract accidentally charges storage rent for a read. Asserting
+      that the sum of balances is unchanged catches any mutation that touches
+      balances, which is the only state this interface makes observable.
+    method: balance
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: sum
+          over: balances
+    expect_failures: []
+    expect_events: []
+    forbid_events: [transfer, approve, burn]
+    invariants: []
+
+  - id: metadata-reads-do-not-mutate-state
+    summary: Metadata queries must not change any contract state or emit value events.
+    description: >-
+      The descriptive half of the interface is what integrators call before they
+      move anything, so a metadata read that emits a transfer or burn event would
+      feed spurious movements into every indexer that trusts the log.
+    method: decimals
+    kind: success
+    preconditions: []
+    postconditions:
+      - kind: unchanged
+        target:
+          kind: sum
+          over: balances
+    expect_failures: []
+    expect_events: []
+    forbid_events: [transfer, approve, burn]
+    invariants: []
+    notes:
+      - >-
+        The same rule is attached to name and symbol, which share its semantics;
+        the method field names decimals because a behaviour rule is scoped to one
+        method.
