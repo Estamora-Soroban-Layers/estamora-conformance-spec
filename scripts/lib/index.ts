@@ -7,6 +7,7 @@
  * validation logic directly instead of shelling out.
  */
 
+export * from "./cli.ts";
 export * from "./console.ts";
 export * from "./diagnostics.ts";
 export * from "./digest.ts";
