@@ -22,6 +22,7 @@ on:
       - "requirements-docs.txt"
       - "scripts/build-docs-site.sh"
       - "scripts/check-doc-links.py"
+      - "scripts/verify-published-schemas.py"
       - "*.md"
       - ".github/workflows/pages.yml"
   pull_request:
@@ -33,6 +34,7 @@ on:
       - "requirements-docs.txt"
       - "scripts/build-docs-site.sh"
       - "scripts/check-doc-links.py"
+      - "scripts/verify-published-schemas.py"
       - "*.md"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
@@ -100,3 +102,32 @@ jobs:
       - name: Deploy
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # The job this repository most needed and did not have.
+  #
+  # Every schema declares a canonical `$id`, which is a claim that a document is served at
+  # that URL. A `$ref` between two schemas is resolved against it, so a consumer's validator
+  # fetches it. When those URLs named a host with no DNS record, every check in this
+  # repository passed -- because every one of them agreed with the same constant that was
+  # wrong. Only fetching the URL settles whether the claim is true, and that is what this
+  # does after every deployment: it reads each schema back from the site and asserts that the
+  # document served at the URL is the document that claims it.
+  #
+  # The schema filenames come from the checkout rather than from a list here, so a schema
+  # added to the repository is covered without this job being edited. Its retry loop absorbs
+  # CDN propagation after the deploy step reports success; a schema still missing after that
+  # is not a propagation delay.
+  verify:
+    name: Verify the published schemas
+    needs: deploy
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      - name: Every schema is served at the URL it claims
+        run: python3 scripts/verify-published-schemas.py
