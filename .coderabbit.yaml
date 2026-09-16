@@ -1,0 +1,55 @@
+# CodeRabbit review configuration.
+#
+# This repository is normative: the schemas and profiles here define what other
+# implementations must accept. A change to a schema is a compatibility decision, so the
+# instructions below ask a reviewer to treat every one of them as such.
+language: en-US
+early_access: false
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    drafts: false
+  path_filters:
+    - "!node_modules/**"
+    - "!site/**"
+    - "!coverage/**"
+  path_instructions:
+    - path: "schema/**"
+      instructions: >-
+        These are published artefacts with stable `$id` values that other tools resolve
+        over HTTP. Check that a change is additive within a minor version, that no `$id`
+        moved, and that `additionalProperties` and `required` were not tightened in a way
+        that rejects documents the previous version accepted.
+    - path: "profiles/**/*/vectors/**"
+      instructions: >-
+        Each vector is a requirement, not an example. Verify the `id` is unique within its
+        profile, that the stated expectation follows from the description, and that a
+        positive vector does not merely restate a failure vector's inverse.
+    - path: "profiles/**/failures.yaml"
+      instructions: >-
+        Failure requirements are stated semantically on purpose: many interfaces define no
+        error codes, so the requirement is that the call did not succeed and that nothing
+        moved, not that a particular payload was returned. Flag any change that asserts a
+        specific error code where the contract is not required to have one.
+    - path: "tests/**"
+      instructions: >-
+        These tests encode the cross-repository contract, including what each CI workflow
+        is expected to run. A failure here is usually a real disagreement between the spec
+        and the thing it describes, not a test to be relaxed. Prefer strengthening the
+        assertion over changing the workflow.
+  tools:
+    gitleaks:
+      enabled: true
+    actionlint:
+      enabled: true
+    yamllint:
+      enabled: true
+    markdownlint:
+      enabled: true
+chat:
+  auto_reply: true
