@@ -7,6 +7,7 @@
 [![Product pitch](https://img.shields.io/badge/watch-5--minute%20pitch-blueviolet)](https://estamora-docs.vercel.app/assets/estamora-pitch.mp4)
 [![Coverage](https://img.shields.io/badge/coverage-%E2%89%A5%2080%25%20enforced-brightgreen)](#test-coverage)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Contributors](https://img.shields.io/github/contributors/Estamora-Soroban-Layers/estamora-conformance-spec)](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/graphs/contributors)
 
 **The normative specification layer of Estamora: machine-readable definitions of what
 it means for a Soroban smart contract to behave according to the standard it claims
