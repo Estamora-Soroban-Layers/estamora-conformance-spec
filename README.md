@@ -3,11 +3,16 @@
 [![CI](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml)
 [![Specification site](https://img.shields.io/badge/spec-estamora--spec-blue)](https://estamora-soroban-layers.github.io/estamora-conformance-spec/)
 [![Documentation](https://img.shields.io/badge/docs-estamora--docs.vercel.app-blue)](https://estamora-docs.vercel.app)
+[![Product pitch](https://img.shields.io/badge/watch-5--minute%20pitch-blueviolet)](https://github.com/Estamora-Soroban-Layers/estamora-docs/releases/download/pitch-v1/estamora-pitch.mp4)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 **The normative specification layer of Estamora: machine-readable definitions of what
 it means for a Soroban smart contract to behave according to the standard it claims
 to implement.**
+
+**[Watch the five-minute product pitch](https://github.com/Estamora-Soroban-Layers/estamora-docs/releases/download/pitch-v1/estamora-pitch.mp4)**
+— it walks through what this specification defines, and why interface compatibility is not
+enough to claim it.
 
 This repository defines conformance. It does not measure it. Executing these
 requirements against a deployed contract, and producing a result, belongs to
