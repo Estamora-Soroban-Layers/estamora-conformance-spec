@@ -27,7 +27,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "ci": "npm run format:check && npm run typecheck && npm run validate && npm run docs:check && npm run test:coverage"
+    "check:doc-links": "python3 scripts/check-doc-links.py",
+    "ci": "npm run format:check && npm run typecheck && npm run check:doc-links && npm run validate && npm run docs:check && npm run test:coverage"
   },
   "dependencies": {
     "ajv": "8.20.0",

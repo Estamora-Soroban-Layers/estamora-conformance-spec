@@ -146,6 +146,23 @@ describe("the main CI workflow", () => {
     }
   });
 
+  it("runs the relative-link check, which is the only thing that resolves relative links", () => {
+    // `scripts/check-doc-links.py` existed for a long time without any workflow running it. It
+    // was named in `paths:` filters, so a search for it found something and the coverage looked
+    // present; the job that would have executed it did not exist, and a relative link -- which
+    // no other tool resolves -- was unguarded for as long as that was true.
+    //
+    // Asserting the command rather than the file's existence is the point: a checker that is
+    // never run and a checker that does not exist are the same amount of coverage.
+    const commands = steps(workflow)
+      .map((step) => step.run)
+      .filter((value): value is string => typeof value === "string")
+      .join("\n");
+    expect(commands, "ci.yml must run check-doc-links.py").toContain(
+      "python3 scripts/check-doc-links.py",
+    );
+  });
+
   it("tests the declared engine floor as well as the current release", () => {
     const versions = Object.values(workflow.jobs ?? {})
       .map((job) => job as unknown as { strategy?: { matrix?: { node?: readonly string[] } } })

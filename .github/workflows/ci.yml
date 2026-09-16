@@ -54,6 +54,24 @@ jobs:
       - name: Run the test suite with the coverage floor
         run: npm run test:coverage
 
+  links:
+    name: Documentation links resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v7
+
+      # `scripts/check-doc-links.py` already existed, and nothing ran it. It was listed in this
+      # repository's own path filters, which made it look wired up in a search, while the job
+      # that would have invoked it did not exist. Adding a screenshot to README.md is what
+      # surfaced that: the check that should have guarded the new relative path was never
+      # executed, so the path was unguarded and appeared to be covered.
+      #
+      # Stdlib only, so there is nothing to install and nothing to pin.
+      - name: Check that every relative link in the documentation resolves
+        run: python3 scripts/check-doc-links.py
+
   tests:
     name: Test on Node.js ${{ matrix.node }}
     runs-on: ubuntu-latest
