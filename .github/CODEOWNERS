@@ -1,0 +1,55 @@
+# Code owners for estamora-conformance-spec.
+#
+# The runner repository gained this file because its `SECURITY.md` sends a reporter to
+# "a maintainer listed in `CODEOWNERS`" and no such file existed. This repository's
+# `SECURITY.md` names a maintainer through the affected profile's `profile.maintainers`
+# field instead, so this file is not closing a broken reference here — it is here so that
+# the two repositories answer the same question the same way, and so that GitHub asks the
+# right person to review a change that alters what conformance means.
+#
+# That distinction is the reason the paths below are what they are. In the runner
+# repository the load-bearing files are code and supply-chain declarations. Here they are
+# normative *documents*: a schema, a profile, or a vector is not an implementation of a
+# requirement, it is the requirement. A change to one of them changes what every
+# conformance result produced against it means, and a change to a published profile version
+# is governed by `VERSIONING.md` and `GOVERNANCE.md` rather than by review alone.
+
+# The ten normative JSON Schemas. Each rejects unknown properties, so these documents
+# decide which requirements can be expressed at all — a requirement with no schema support
+# cannot be written down.
+/schema/                                       @winningtalker-commits
+
+# The published profiles. A version directory here is what a receipt names, which is why a
+# published version is never edited in place and a correction is a new version with
+# `supersedes` set.
+/profiles/                                     @winningtalker-commits
+
+# The shared vector corpus. A vector is a specification artefact authored by a person, and
+# a vector that states the wrong expectation invalidates every result measured with it.
+/vectors/                                      @winningtalker-commits
+
+# Canonical identifiers are load-bearing: a `$ref` between schemas resolves against the
+# `$id` of the document containing it, so a wrong base makes the schemas unreadable from
+# outside a clone. That defect shipped once already, and these two files are what caught it
+# and what publishes the documents it names.
+/scripts/verify-published-schemas.py           @winningtalker-commits
+/scripts/build-docs-site.sh                    @winningtalker-commits
+
+# The validation tooling decides whether a defective profile passes validation, which is
+# the one failure mode this repository exists to prevent.
+/scripts/                                      @winningtalker-commits
+/tests/                                        @winningtalker-commits
+
+# The rules themselves, which a profile change is answerable to.
+/VERSIONING.md                                 @winningtalker-commits
+/GOVERNANCE.md                                 @winningtalker-commits
+/SECURITY.md                                   @winningtalker-commits
+/.github/CODEOWNERS                            @winningtalker-commits
+
+# The release and deployment plumbing, whose mistakes are the ones that cannot be undone.
+/.github/workflows/                            @winningtalker-commits
+
+# Default owner. The organisation has a single maintainer today; the normative paths above
+# are the ones to split first, because a change to one of them changes what conformance
+# means rather than how it is checked.
+*                                              @winningtalker-commits
