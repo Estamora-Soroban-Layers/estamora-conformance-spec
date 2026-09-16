@@ -1,5 +1,10 @@
 # estamora-conformance-spec
 
+[![CI](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml)
+[![Specification site](https://img.shields.io/badge/spec-estamora--spec-blue)](https://estamora-soroban-layers.github.io/estamora-conformance-spec/)
+[![Documentation](https://img.shields.io/badge/docs-estamora--docs.vercel.app-blue)](https://estamora-docs.vercel.app)
+[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+
 **The normative specification layer of Estamora: machine-readable definitions of what
 it means for a Soroban smart contract to behave according to the standard it claims
 to implement.**
@@ -7,7 +12,13 @@ to implement.**
 This repository defines conformance. It does not measure it. Executing these
 requirements against a deployed contract, and producing a result, belongs to
 [`estamora-conformance-runner`](https://github.com/Estamora-Soroban-Layers/estamora-conformance-runner).
-Estamora consists of exactly those two repositories.
+Those two are the normative and the measuring layers. Estamora also publishes
+[`estamora-docs`](https://github.com/Estamora-Soroban-Layers/estamora-docs) — the
+[documentation site](https://estamora-docs.vercel.app), which assembles this document set at
+a pinned revision — and [`estamora-app`](https://github.com/Estamora-Soroban-Layers/estamora-app),
+which presents conformance evidence for live testnet contracts. The
+[organization profile](https://github.com/Estamora-Soroban-Layers) maps all four and says
+which one owns what.
 
 **Read the specification: <https://estamora-soroban-layers.github.io/estamora-conformance-spec/>**
 — the site serves this document set alongside the schemas and profiles themselves, so
