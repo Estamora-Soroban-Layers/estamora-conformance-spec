@@ -81,6 +81,16 @@ Estamora exists to make the second claim checkable.
 | `VERSIONING.md`                | The versioning policy this repository enforces on itself                |
 | `CHANGELOG.md`                 | The release ledger, validated against the tree by `release-check`       |
 
+## The published index
+
+![The specification site](docs/assets/screenshots/spec-profiles.png)
+
+This site is chosen deliberately: the schemas and profiles here are meant to be _resolved_ by
+tools, so they are published at stable URLs on GitHub Pages rather than described in prose.
+`estamora-app` validates every report it displays against `report.schema.json` at the `$id` this
+site serves. The screenshot was taken from the live site by
+[`capture-readme-shots.mjs`](https://github.com/Estamora-Soroban-Layers/estamora-docs/blob/main/video/capture-readme-shots.mjs).
+
 ## A profile is a bundle, not a document
 
 A profile describes every requirement for one interface. It is seven documents, because
