@@ -25,5 +25,39 @@ export default defineConfig({
     // Assertions are compared as plain data, so a full diff on failure is worth
     // more than a truncated one.
     diff: { expand: true },
+    coverage: {
+      provider: "v8",
+      // The library, not the entry points. `scripts/*.ts` are process entry
+      // points: they are executed by `tests/compatibility/exit-codes.test.ts`,
+      // which spawns them through `tsx` and asserts their exit codes, and the v8
+      // provider cannot attribute coverage to a child process. Counting them here
+      // would report a denominator in the thousands at zero and bury the surface
+      // that can be measured.
+      //
+      // What is excluded, and what covers it, is named in the README's "Test
+      // coverage" section rather than left implicit here. An exclusion visible
+      // only in a config file is indistinguishable from a hidden denominator.
+      include: ["scripts/lib/**/*.ts"],
+      exclude: [
+        "**/*.test.ts",
+        // `models.ts` declares types and `index.ts` re-exports. Neither contains
+        // a runtime statement, so instrumenting them reports 0% for a file with
+        // nothing to cover: a figure that reads as a gap and is not one.
+        "**/scripts/lib/models.ts",
+        "**/scripts/lib/index.ts",
+        // Test infrastructure, which is not shipped code.
+        "**/tests/**",
+      ],
+      reporter: ["text", "json-summary"],
+      // A floor, not a target: below the measured figures so ordinary
+      // refactoring does not fail the build, and high enough that a module
+      // losing its tests does.
+      thresholds: {
+        statements: 80,
+        lines: 80,
+        functions: 75,
+        branches: 70,
+      },
+    },
   },
 });

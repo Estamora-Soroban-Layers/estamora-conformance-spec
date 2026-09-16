@@ -3,16 +3,19 @@
 [![CI](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml/badge.svg)](https://github.com/Estamora-Soroban-Layers/estamora-conformance-spec/actions/workflows/ci.yml)
 [![Specification site](https://img.shields.io/badge/spec-estamora--spec-blue)](https://estamora-soroban-layers.github.io/estamora-conformance-spec/)
 [![Documentation](https://img.shields.io/badge/docs-estamora--docs.vercel.app-blue)](https://estamora-docs.vercel.app)
-[![Product pitch](https://img.shields.io/badge/watch-5--minute%20pitch-blueviolet)](https://github.com/Estamora-Soroban-Layers/estamora-docs/releases/download/pitch-v1/estamora-pitch.mp4)
+[![Product pitch](https://img.shields.io/badge/watch-5--minute%20pitch-blueviolet)](https://estamora-docs.vercel.app/assets/estamora-pitch.mp4)
+[![Coverage](https://img.shields.io/badge/coverage-%E2%89%A5%2080%25%20enforced-brightgreen)](#test-coverage)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 **The normative specification layer of Estamora: machine-readable definitions of what
 it means for a Soroban smart contract to behave according to the standard it claims
 to implement.**
 
-**[Watch the five-minute product pitch](https://github.com/Estamora-Soroban-Layers/estamora-docs/releases/download/pitch-v1/estamora-pitch.mp4)**
+**[Watch the five-minute product pitch](https://estamora-docs.vercel.app/assets/estamora-pitch.mp4)**
 — it walks through what this specification defines, and why interface compatibility is not
-enough to claim it.
+enough to claim it. It plays in the browser from the documentation site; the
+[release copy](https://github.com/Estamora-Soroban-Layers/estamora-docs/releases/download/pitch-v1/estamora-pitch.mp4)
+is the archived download.
 
 This repository defines conformance. It does not measure it. Executing these
 requirements against a deployed contract, and producing a result, belongs to
@@ -383,6 +386,43 @@ Start here, then read the model that constrains the profile you are writing.
 | [`docs/security.md`](docs/security.md)                       | The bounds of a conformance result                                |
 | [`docs/governance.md`](docs/governance.md)                   | How requirements are proposed, reviewed and retired               |
 | [`docs/faq.md`](docs/faq.md)                                 | Answers to the questions this design invites                      |
+
+## Test coverage
+
+Measured with `npm run test:coverage`, with the floor enforced in CI:
+
+| Metric     | Measured | Floor enforced |
+| ---------- | -------- | -------------- |
+| Statements | 91.0%    | 80%            |
+| Lines      | 91.1%    | 80%            |
+| Functions  | 95.0%    | 75%            |
+| Branches   | 83.6%    | 70%            |
+
+### What the figure covers, and what it does not
+
+The measurement is scoped to `scripts/lib/`, and that scope is stated here rather than left in
+the config file because an exclusion visible only in a config is indistinguishable from a hidden
+denominator.
+
+| Path                                 | Lines | In the figure | Why                                                                                               |
+| ------------------------------------ | ----- | ------------- | ------------------------------------------------------------------------------------------------- |
+| `scripts/lib/` (minus the two below) | 1,806 | **yes**       | The validation logic. Everything the entry points do, and everything a contributor changes.       |
+| `scripts/validate-schema.ts`         | 273   | no            | Process entry points: parse arguments, call the library, translate diagnostics into an exit code. |
+| `scripts/validate-profiles.ts`       | 961   | no            | Same.                                                                                             |
+| `scripts/check-vectors.ts`           | 641   | no            | Same.                                                                                             |
+| `scripts/release-check.ts`           | 533   | no            | Same.                                                                                             |
+| `scripts/generate-docs.ts`           | 327   | no            | Same.                                                                                             |
+| `scripts/lib/models.ts`              | 678   | no            | Type declarations only. No runtime statement to cover.                                            |
+| `scripts/lib/index.ts`               | 22    | no            | A barrel of re-exports. Same.                                                                     |
+
+Those five entry points are **not untested**: `tests/compatibility/exit-codes.test.ts` runs them
+as real subprocesses through `tsx` and asserts their exit codes, standard output and standard
+error. They are excluded from the figure because the v8 provider cannot attribute coverage to a
+child process, so counting them would report about 2,700 lines at zero and bury the surface that
+can be measured in place. Covering them by proxy would make the number look better and mean less.
+
+The honest consequence: the two figures differ by a lot. The library is at 91%; the repository
+as a whole reports 29% in-process, and the difference is entirely those entry points.
 
 ## Authoring a profile
 

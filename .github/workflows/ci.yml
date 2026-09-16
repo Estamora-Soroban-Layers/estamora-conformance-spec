@@ -48,8 +48,11 @@ jobs:
       - name: Check that the generated documentation is current
         run: npm run docs:check
 
-      - name: Run the test suite
-        run: npm test
+      # `test:coverage` rather than `test`: the suite is the same, but this run also
+      # enforces the floor configured in vitest.config.ts, so a module that loses its
+      # tests fails here instead of quietly lowering a figure somebody has to notice.
+      - name: Run the test suite with the coverage floor
+        run: npm run test:coverage
 
   tests:
     name: Test on Node.js ${{ matrix.node }}
@@ -75,5 +78,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run the test suite
-        run: npm test
+      # `test:coverage` rather than `test`: the suite is the same, but this run also
+      # enforces the floor configured in vitest.config.ts, so a module that loses its
+      # tests fails here instead of quietly lowering a figure somebody has to notice.
+      - name: Run the test suite with the coverage floor
+        run: npm run test:coverage

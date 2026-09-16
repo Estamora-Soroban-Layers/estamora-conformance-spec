@@ -137,7 +137,10 @@ describe("the main CI workflow", () => {
       "npm run typecheck",
       "npm run validate",
       "npm run docs:check",
-      "npm test",
+      // `test:coverage` rather than `test`: the suite is the same, and it also
+      // enforces the floor in vitest.config.ts. Asserting the weaker of the two
+      // would let CI drop the floor while still satisfying this contract.
+      "npm run test:coverage",
     ]) {
       expect(commands, `ci.yml must run ${script}`).toContain(script);
     }
