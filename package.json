@@ -24,7 +24,7 @@
   "author": "winningtalker-commits",
   "license": "Apache-2.0",
   "dependencies": {
-    "@stellar/stellar-sdk": "^13.0.0"
+    "@stellar/stellar-sdk": "^17.3.0"
   },
   "devDependencies": {
     "@types/node": "^22.5.0",
